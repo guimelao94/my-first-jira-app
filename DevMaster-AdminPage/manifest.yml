@@ -1,0 +1,59 @@
+modules:
+  jira:customField:
+    - key: overflowHours
+      name: Overflow Hours
+      description: Tracks hours unnacounted for
+      type: number
+      validation:
+        expression: value == null || (value >= 0 && value <= 100)
+        errorMessage: The value must be a number between 0 and 100.
+      formatter:
+        expression: "`${'▰'.repeat(value / 10).padEnd(10, '▱')} (${value}%)`"
+        export: true
+      parser:
+        expression: "Number(value.replace('[^\\d]', ''))"
+      searchSuggestions:
+        expression: '["0", "25", "50", "75", 100"]'
+      readOnly: false
+      render: native
+  jira:globalPage:
+    - key: devmaster-global
+      resource: global
+      layout: blank
+      resolver:
+        function: resolver
+      title: DevMaster-Landing
+  jira:issueContext:
+    - key: devmaster-sidebar
+      resource: sidebar
+      resolver:
+        function: resolver
+      title: DevMaster-Sidebar
+      label: DevMaster
+  function:
+    - key: resolver
+      handler: index.handler
+resources:
+  - key: global
+    path: static/global-page/build
+  - key: sidebar
+    path: static/sidebar/build
+app:
+  runtime:
+    name: nodejs18.x
+  id: ari:cloud:ecosystem::app/dd3a99a1-5b49-4e56-a3c1-11b7a6af4430
+  storage:
+    entities:
+      - name: cards
+        attributes:
+          ID: 
+            type: integer
+          EpicKey: 
+            type: string          
+permissions:
+  scopes:
+    - read:jira-work
+    - storage:app
+  content:
+    styles:
+      - 'unsafe-inline'

@@ -1,0 +1,22 @@
+modules:
+  jira:issuePanel:
+    - key: devmaster-hello-world-issue-panel
+      resource: main
+      resolver:
+        function: resolver
+      render: native
+      title: DevMaster
+      icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+  function:
+    - key: resolver
+      handler: index.handler
+resources:
+  - key: main
+    path: src/frontend/index.jsx
+app:
+  runtime:
+    name: nodejs18.x
+  id: ari:cloud:ecosystem::app/a512229a-0df1-4b78-8bbf-2d81a1234e4e
+permissions:
+  scopes:
+    - read:jira-work

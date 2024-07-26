@@ -1,0 +1,18 @@
+modules:
+  jira:issueContext:
+    - key: devmaster-custom-ui-side-hello-world-context
+      resource: main
+      resolver:
+        function: resolver
+      title: DevMaster-Custom_UI-side
+      label: Custom UI
+  function:
+    - key: resolver
+      handler: index.handler
+resources:
+  - key: main
+    path: static/hello-world/build
+app:
+  runtime:
+    name: nodejs18.x
+  id: ari:cloud:ecosystem::app/b811f15a-a7f2-4ec7-999b-4b2fabdcd599

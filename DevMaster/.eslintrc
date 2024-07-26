@@ -1,0 +1,19 @@
+{
+  "parserOptions": {
+    "sourceType": "module",
+    "ecmaVersion": 2023,
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
+  "plugins": [
+    "react-hooks",
+    "@atlaskit/design-system"
+  ],
+  "extends": [
+    "plugin:@atlaskit/design-system/recommended"
+  ],
+  "rules": {
+    "react-hooks/rules-of-hooks": "error"
+  }
+}

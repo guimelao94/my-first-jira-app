@@ -1,0 +1,18 @@
+.HeaderCell{
+    justify-content:center;
+    background-color: #282828;
+    color:#f1f1f1 !important;
+}
+
+.BodyCell{
+    justify-content:center;
+    background-color: #fafbfc;
+    color:#282828 !important;
+}
+
+.BodyLabel{
+    justify-content:left;
+    background-color: #f1f2f4;
+    color:#282828 !important;
+}
+
