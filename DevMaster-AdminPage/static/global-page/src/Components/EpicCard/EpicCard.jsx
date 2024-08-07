@@ -1,16 +1,16 @@
 import { Box, Inline, Stack, xcss } from '@atlaskit/primitives';
 import { media } from '@atlaskit/primitives/responsive';
 
-import { useState, useEffect, memo, useCallback } from 'react';
+import { useState, useEffect, memo, useCallback, useContext } from 'react';
 import TableTree, { Cell, Header, Headers, Row, Rows } from '@atlaskit/table-tree';
 import { TopCard_Row } from '../TopCard_Misc';
 import { IssuesTable } from '../IssuesTable';
-import { HandleEpics, RefreshData } from './EpicScripts';
 import Lozenge from '@atlaskit/lozenge';
 import Spinner from '@atlaskit/spinner';
 import Toggle from '@atlaskit/toggle';
 import { EpicStack } from './EpicStack';
 import { DevStack } from './DevStack';
+import GlobalContext from '../../context/GlobalContext';
 
 export const EpicCard = ({ epicKey, style, developersList, setDevelopersList }) => {
 
@@ -20,6 +20,7 @@ export const EpicCard = ({ epicKey, style, developersList, setDevelopersList }) 
     const [loaded, setLoaded] = useState(false);
     const [storage, setStorage] = useState([]);
     const [viewDevStack, setViewDevStack] = useState(false);
+    const {state,dispatch} = useContext(GlobalContext);
     const [devStackData,setDevStackData] = useState([
         {
             FullName: 'Guimel O Gonzalez',
@@ -65,14 +66,17 @@ export const EpicCard = ({ epicKey, style, developersList, setDevelopersList }) 
 
     useEffect(() => {
         console.log('Pull Data');
-        HandleEpics(epicKey, setCardData, setStorage, storage)
+        //HandleEpics(epicKey, setCardData, setStorage, storage)
+        
     }, []);
 
     useEffect(() => {
-        RefreshData(storage.slice().sort((a, b) => b.idx - a.idx), setDevelopers, setIssues, setLoaded, setCardData, developersList, setDevelopersList,devStackData,setDevStackData)
+        //RefreshData(storage.slice().sort((a, b) => b.idx - a.idx), setDevelopers, setIssues, setLoaded, setCardData, developersList, setDevelopersList,devStackData,setDevStackData)
         console.log('LoadedStorage');
         console.log(storage);
         console.log(cardData);
+        dispatch({type:"SET",payload:cardData})
+        console.log(state);
     }, [storage]);
 
     if (!(cardData && loaded && storage)) {

@@ -3,23 +3,13 @@ import TableTree, { Cell, Header, Headers, Row, Rows } from '@atlaskit/table-tre
 import Textfield from '@atlaskit/textfield';
 import InlineEdit from '@atlaskit/inline-edit';
 import { Box } from '@atlaskit/primitives';
+import { useContext } from 'react';
+import GlobalContext from '../context/GlobalContext';
 
-export const DeveloperTable = ({ developersList, setDevelopersList}) => {
+export const DeveloperTable = ({ }) => {
+    const {Developers} = useContext(GlobalContext);
+    console.log(Developers.Available);
     
-    console.log(developersList);
-    const UpdateHours = (FullName,property,value) => {
-        console.log(`FullName: ${FullName}`);
-        console.log(`property: ${property}`);
-        console.log(`value: ${value}`);
-
-        var newArray = developersList;
-        var dev = newArray.find(x=>x.FullName === FullName);
-        dev[property] = value;
-        console.log(newArray);
-        console.log(developersList);
-        setDevelopersList(newArray);
-
-    };
     return (
         <TableTree label="Automatically controlled row expansion">
             <Headers>
@@ -29,7 +19,7 @@ export const DeveloperTable = ({ developersList, setDevelopersList}) => {
                 <Header  width={120} >Dev Hours</Header>
             </Headers>
             <Rows
-                items={developersList}
+                items={Developers.Available}
                 render={({ FullName,ShortName, AvailableHours, Meetings, DevHours }) => (
                     <Row
                         items={[]}
@@ -48,7 +38,7 @@ export const DeveloperTable = ({ developersList, setDevelopersList}) => {
                                         {AvailableHours === 0 ? '0':AvailableHours}
                                     </Box>
                                 )}
-                            onConfirm={(value) => UpdateHours(FullName,'AvailableHours',value)}
+                            onConfirm={(value) =>Developers.Dispatch({Type:'UPDATE-HOURS'},FullName,'AvailableHours',value)}
                             />
                         </Cell>
                         <Cell>
@@ -60,7 +50,7 @@ export const DeveloperTable = ({ developersList, setDevelopersList}) => {
                                         {Meetings === 0 ? '0':Meetings}
                                     </Box>
                                 )}
-                                onConfirm={(value) => UpdateHours(FullName,'Meetings',value)}
+                                onConfirm={(value) => Developers.Dispatch({Type:'UPDATE-HOURS'},FullName,'Meetings',value)}
                             />
                         </Cell>
                         <Cell>
@@ -72,7 +62,7 @@ export const DeveloperTable = ({ developersList, setDevelopersList}) => {
                                         {DevHours === 0 ? '0':DevHours}
                                     </Box>
                                 )}
-                                onConfirm={(value) => UpdateHours(FullName,'DevHours',value)}
+                                onConfirm={(value) => Developers.Dispatch({Type:'UPDATE-HOURS'},FullName,'DevHours',value)}
                             />
                         </Cell>
                     </Row>

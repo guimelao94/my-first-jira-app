@@ -27,9 +27,12 @@
     "@atlaskit/tokens": "^1.53.2",
     "@emotion/react": "^11.11.4",
     "@forge/bridge": "3.4.0",
+    "@reduxjs/toolkit": "^2.2.7",
     "bind-event-listener": "^3.0.0",
-    "react": "^16",
-    "react-dom": "^16",
+    "immer": "^10.1.1",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-redux": "^9.1.2",
     "styled-components": "^6.1.11"
   },
   "devDependencies": {
