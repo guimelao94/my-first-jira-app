@@ -31,6 +31,10 @@ import { DeveloperTable } from './DeveloperTable';
 import { fetchAvailableEpics, fetchSelectedEpics, GenerateIssueData, ProcessEpic } from '../store';
 import { useDispatch, useSelector } from 'react-redux';
 import { useThunk } from '../hooks/useThunk';
+import { HandleEpicThunks } from './ThunkHandlers';
+import { groupByDevs } from '../Utils/GroupingTools';
+import { RefreshDevelopersList } from '../reducers/Functions/Developers';
+import { setDevelopers } from '../store/slices/epicSlice';
 
 export const ProductLayout = ({ children }) => {
 	const [getAvailableEpics, AvailableEpicsLoading, AvailableEpicsError] = useThunk(fetchAvailableEpics);
@@ -46,58 +50,49 @@ export const ProductLayout = ({ children }) => {
 		// getAvailableEpics();
 		// getSelectedEpics();
 		// setIsLoading(true);
-		dispatch(fetchAvailableEpics())
-			.unwrap()
-			.catch((err) => setError(err))
-			.finally(() => {
-				dispatch(fetchSelectedEpics())
-					.unwrap()
-					.then((data) => {
-						console.log(epics);
-						console.log(data);
-						data.forEach(epicKey => {
-							dispatch(ProcessEpic(epicKey))
-								.unwrap()
-								.then((epic)=>{
-									console.log(epic);
-									if(epic){
-										epic.Issues.forEach((issue,index)=>{
-											dispatch(GenerateIssueData(issue,index));
-										})
-									}
-									
-								})
-								.finally(() => {
-									setIsLoading(false);
-									console.log(epics);
-								});
-						});
-					})
-					.catch((err) => console.log(err))
-					;
-			});
+		HandleEpicThunks(dispatch);
 	}, []);
 
-	if (isLoading) {
-		return <div>Loading...</div>
-	}
+	useEffect(() => {
+		// getAvailableEpics();
+		// getSelectedEpics();
+		// setIsLoading(true);
+		if(epics.loaded){
+			var devs = groupByDevs(epics.issues, 'dev');
+    		RefreshDevelopersList(devs).then((data)=>{
+				console.log(data);
+				dispatch(setDevelopers(data));
+			});
+		}	
+		
+	}, [epics.loaded]);
 
-	if (error) {
-		return <div>Error fetching data...</div>
-	}
-	return (
-		<div>
-			<div>{epics.data.length}</div>
-			{epics.data && epics.data.map((epic) => (
-				<div>
-					<p>{epic.EpicKey}</p>
-					{epics.issues && epics.issues.map((issue) =>(
-						<p>{issue.ticketNumber}</p>
-					))}
-				</div>
-			))}
-		</div>
-	);
+	useEffect(() => {
+		if(epics.loaded){
+			console.log(epics);
+		}
+	}, [epics.Developers]);
+
+if (isLoading) {
+	return <div>Loading...</div>
+}
+
+if (error) {
+	return <div>Error fetching data...</div>
+}
+return (
+	<div>
+		<div>{epics.data.length}</div>
+		{epics.data && epics.data.map((epic) => (
+			<div>
+				<p>{epic.EpicKey}</p>
+				{epics.issues && epics.issues.map((issue) => (
+					<p>{issue.ticketNumber}</p>
+				))}
+			</div>
+		))}
+	</div>
+);
 }
 
 function TopNavigationContents() {

@@ -21,7 +21,7 @@ export const UpdateHours = (developersList,FullName,property,value) => {
 
 };
 
-export const RefreshDevelopersList = (devs) => {
+export const RefreshDevelopersList = async (devs) => {
     var devsList = devs.map((dev) =>({
       FullName:dev.FullName,
       ShortName:dev.ShortName,
@@ -30,19 +30,19 @@ export const RefreshDevelopersList = (devs) => {
       DevHours:0
     }));
   
-    invoke('Storage.GetData', { key: 'DevelopersList' }).then((returnedData) => {
-      if (Object.keys(returnedData).length === 0) {
-        console.log('empty');
-        return devsList;
-      } else {
-        if(devsList.length != returnedData.length){
-          const unionArray = [...new Set([...devsList, ...returnedData])];
-          devsList = unionArray;
-        }
-        else{
-          devsList = returnedData;
-        }
-        return devsList;
+    const returnedData = await invoke('Storage.GetData', { key: 'DevelopersList' });
+    if (Object.keys(returnedData).length === 0) {
+      console.log('empty');
+      return devsList;
+    } else {
+      if(devsList.length != returnedData.length){
+        const unionArray = [...new Set([...devsList, ...returnedData])];
+        devsList = unionArray;
       }
-    });
+      else{
+        devsList = returnedData;
+      }
+      console.log(devsList);
+      return devsList;
+    }
   }

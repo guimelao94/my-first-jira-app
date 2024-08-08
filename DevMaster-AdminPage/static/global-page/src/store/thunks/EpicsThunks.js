@@ -54,7 +54,7 @@ export const ProcessEpic = createAsyncThunk('epics/Process',async (epicKey)=>{
 
 });
 
-export const GenerateIssueData = createAsyncThunk('epics/GenerateIssueData',async (item,index)=>{
+export const GenerateIssueData = createAsyncThunk('epics/GenerateIssueData',async ({item,index})=>{
     var customFields = {
       OverflowTime: 0
     }

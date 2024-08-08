@@ -8,9 +8,16 @@ const epicsSlice = createSlice({
     Selected:[],
     data:[],
     issues:[],
+    Developers:[],
     isLoading: false,
     loaded:false,
     error: null
+  },
+  reducers:{
+    setDevelopers(state,action){
+      console.log(action.payload);
+      state.Developers = action.payload;
+    }
   },
   extraReducers(builder) {
     //Fetch Available Epics
@@ -65,6 +72,11 @@ const epicsSlice = createSlice({
       state.isLoading = false;
       if (action.payload){
         state.issues.push(action.payload);
+        if(state.Selected.length > 0 && state.data.reduce((accumulator, item) => {
+          return accumulator + item.Issues.length;
+        }, 0) === state.issues.length){
+          state.loaded = true;
+        }
       }
     });
     builder.addCase(GenerateIssueData.rejected, (state, action) => {
@@ -74,5 +86,5 @@ const epicsSlice = createSlice({
 
   }
 });
-
+export const { setDevelopers } = epicsSlice.actions;
 export const epicsReducer = epicsSlice.reducer;
