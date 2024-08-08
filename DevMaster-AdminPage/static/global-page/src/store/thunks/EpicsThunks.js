@@ -54,55 +54,6 @@ export const ProcessEpic = createAsyncThunk('epics/Process',async (epicKey)=>{
 
 });
 
-export const GenerateIssueData = createAsyncThunk('epics/GenerateIssueData',async ({item,index})=>{
-    var customFields = {
-      OverflowTime: 0
-    }
-  
-    var workLogs = [];
-    
-    console.log(item);
-    console.log(index);
-    const jql = await requestJira(`/rest/api/3/issue/${item.key}/worklog`);
-    const returnedData = await jql.json();
-    workLogs = Object.entries(
-        returnedData.worklogs.map((item, index) => ({
-          TimeSpent: item.timeSpentSeconds,
-          Developer: item.author.displayName
-        })).reduce((acc, { Developer, TimeSpent }) => {
-          if (!acc[Developer]) {
-            acc[Developer] = 0;
-          }
-          acc[Developer] += TimeSpent;
-          return acc;
-        }, {})
-      ).map(([Developer, TimeSpent]) => ({ Developer, TimeSpent }));
-
-    const storageData = await invoke('Storage.GetData', { key: item.key });
-
-    if (Object.keys(storageData).length === 0) {
-        console.log('empty');
-        invoke('Storage.SaveData', { key: item.key, value: customFields }).then((storageData) => {
-          console.log(storageData);
-        });
-      } else {
-        customFields = storageData;
-      }
-  
-      var issueData = {
-        idx: index,
-        dev: item.fields.assignee?.displayName,
-        ticketNumber: item.key,
-        remainingTime: item.fields?.timeestimate,
-        timespent: item.fields?.timespent,
-        originalestimate: item.fields?.timeoriginalestimate,
-        overflowTime: customFields.OverflowTime,
-        worklogs: workLogs
-      }
-      console.log(issueData);
-      return issueData;
-  
-});
 
 const pause = (duration) =>{
     return new Promise((resolve)=>{

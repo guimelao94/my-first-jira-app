@@ -11,12 +11,50 @@ const epicsSlice = createSlice({
     Developers:[],
     isLoading: false,
     loaded:false,
+    AllIssuesLoaded:false,
     error: null
   },
   reducers:{
     setDevelopers(state,action){
+      state.loaded = false;
       console.log(action.payload);
       state.Developers = action.payload;
+      if(!state.data.some(x=>x.Developers == null) && state.data.length === state.Selected.length && state.Developers.length > 0) {
+        console.log('loaded');
+        state.loaded = true;
+      }
+
+    },
+    setEpicDevelopers(state,action){
+      state.loaded = false;
+      const idx = state.data.indexOf(x=>x.EpicKey === action.payload.EpicKey);
+      console.log(action.payload);
+      for (let epic of state.data) {
+        if(epic.EpicKey === action.payload.EpicKey){
+          epic.Developers = action.payload.Developers;          
+        }
+      }
+        console.log(state.data.filter(x=>x.Developers == null));
+        if(!state.data.some(x=>x.Developers == null) && state.data.length === state.Selected.length && state.Developers.length > 0) {
+          console.log('loaded');
+          state.loaded = true;
+        }
+    },
+    setIssueData(state, action) {
+      state.processed = true;
+      state.isLoading = false;
+      if (action.payload){
+        state.issues.push(...action.payload);
+        const totalIssues = state.data.reduce((accumulator, item) => {
+          return accumulator + item.Issues.length;
+        }, 0);
+        console.log(totalIssues);
+        console.log(state.issues.length);
+        if(state.Selected.length > 0 && totalIssues === state.issues.length && state.data.length === state.Selected.length){
+          console.log('AllIssuesLoaded');
+          state.AllIssuesLoaded = true;
+        }
+      }
     }
   },
   extraReducers(builder) {
@@ -53,6 +91,7 @@ const epicsSlice = createSlice({
     builder.addCase(ProcessEpic.fulfilled, (state, action) => {
       state.processed = true;
       state.isLoading = false;
+      console.log(action.payload);
       if (action.payload){
         state.data.push(action.payload);
       }
@@ -62,29 +101,7 @@ const epicsSlice = createSlice({
       state.error = action.error;
     });
 
-
-    //Generate IssueData
-    builder.addCase(GenerateIssueData.pending, (state, action) => {
-      state.isLoading = true;
-    });
-    builder.addCase(GenerateIssueData.fulfilled, (state, action) => {
-      state.processed = true;
-      state.isLoading = false;
-      if (action.payload){
-        state.issues.push(action.payload);
-        if(state.Selected.length > 0 && state.data.reduce((accumulator, item) => {
-          return accumulator + item.Issues.length;
-        }, 0) === state.issues.length){
-          state.loaded = true;
-        }
-      }
-    });
-    builder.addCase(GenerateIssueData.rejected, (state, action) => {
-      state.isLoading = false;
-      state.error = action.error;
-    });
-
   }
 });
-export const { setDevelopers } = epicsSlice.actions;
+export const { setDevelopers,setEpicDevelopers,setIssueData } = epicsSlice.actions;
 export const epicsReducer = epicsSlice.reducer;

@@ -57,7 +57,8 @@ export const ProductLayout = ({ children }) => {
 		// getAvailableEpics();
 		// getSelectedEpics();
 		// setIsLoading(true);
-		if(epics.loaded){
+		if(epics.AllIssuesLoaded){
+			console.log(epics);
 			var devs = groupByDevs(epics.issues, 'dev');
     		RefreshDevelopersList(devs).then((data)=>{
 				console.log(data);
@@ -65,14 +66,14 @@ export const ProductLayout = ({ children }) => {
 			});
 		}	
 		
-	}, [epics.loaded]);
+	}, [epics.AllIssuesLoaded]);
 
 	useEffect(() => {
 		if(epics.loaded){
 			console.log(epics);
 		}
-	}, [epics.Developers]);
-
+	}, [epics.loaded]);
+	
 if (isLoading) {
 	return <div>Loading...</div>
 }
@@ -85,8 +86,8 @@ return (
 		<div>{epics.data.length}</div>
 		{epics.data && epics.data.map((epic) => (
 			<div>
-				<p>{epic.EpicKey}</p>
-				{epics.issues && epics.issues.map((issue) => (
+				<h1>{epic.EpicKey}</h1>
+				{epics.issues && epics.issues.filter(x=>x.EpicKey == epic.EpicKey).map((issue) => (
 					<p>{issue.ticketNumber}</p>
 				))}
 			</div>

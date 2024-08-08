@@ -1,6 +1,8 @@
 export const groupByDevs = (array, property) => {
+    console.log(array);
     if (array.length == 0 || !array.some(x=>x[property] != undefined)) return [];
-    const devs = [...new Set(array.map(obj => obj[property]))];
+    var devs = [...new Set(array.map(obj => obj[property]))];
+    devs = devs.filter(dev=>dev != undefined);
     console.log(devs);
     console.log(array);
     return devs.map(value => {
