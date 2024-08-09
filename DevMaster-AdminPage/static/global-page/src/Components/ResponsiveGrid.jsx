@@ -22,7 +22,7 @@ const responsiveStyles = xcss({
 const ResponsiveGrid = ({children}) => {
 	return (
 		
-		<Grid xcss={responsiveStyles} gap="space.200" alignItems="center" >
+		<Grid xcss={responsiveStyles} gap="space.200" alignItems="start" >
 			{children}
 		</Grid>
 	);

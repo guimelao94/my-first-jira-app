@@ -1,17 +1,22 @@
 import Select from '@atlaskit/select';
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { SaveSelectedEpics } from '../store';
 
 
-export const EpicList = () =>{
-    console.log('render');
-    console.log(AvailableEpics);
-    console.log(SelectedEpics);
+export const EpicList =memo(function(){
+    const dispatch = useDispatch();
+	const epics = useSelector((state) => {
+		return state.epics;
+	})
+    console.log(epics.Available);
+    console.log(epics.Available.filter(x => epics.Selected.some(y => y == x.value)));
 
-    const HandleChange =(e) =>{
+    const HandleChange = async (e) =>{
         console.log(e);
-        UpdateEpics(e.map((item) =>(item.value)));
+        dispatch(SaveSelectedEpics((e.map((item) =>(item.value)))));
     }
     return(
-        <Select options={AvailableEpics} defaultValue={SelectedEpics} isMulti onChange={HandleChange}/>
+        <Select options={epics.Available} defaultValue={epics.Available.filter(x => epics.Selected.some(y => y == x.value))} isMulti onChange={HandleChange}/>
     );
-}
+})

@@ -18,13 +18,23 @@ export const fetchAvailableEpics = createAsyncThunk('epics/fetchAvailable',async
 });
 
 export const fetchSelectedEpics = createAsyncThunk('epics/fetchSelected',async ()=>{
-    var res = [];
-    await invoke('Storage.GetData', { key: 'Cards' }).then((returnedData) => {
+    console.log('fetchSelected');
+    try {
+        const res = await invoke('Storage.GetData', { key: 'Cards' });
+        console.log(res);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+    
+    
+});
+
+export const SaveSelectedEpics = createAsyncThunk('epics/SaveSelected',async (newArray)=>{    
+    invoke('Storage.SaveData', { key: 'Cards', value: newArray }).then((returnedData) => {
         console.log(returnedData);
-        //var newArray = [...returnedData, ...state.Selected]
-        res = returnedData;
     });
-    return res;
+    return newArray;
 });
 
 export const ProcessEpic = createAsyncThunk('epics/Process',async (epicKey)=>{

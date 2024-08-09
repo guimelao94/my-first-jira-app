@@ -3,13 +3,28 @@ import TableTree, { Cell, Header, Headers, Row, Rows } from '@atlaskit/table-tre
 import Textfield from '@atlaskit/textfield';
 import InlineEdit from '@atlaskit/inline-edit';
 import { Box } from '@atlaskit/primitives';
-import { useContext } from 'react';
-import GlobalContext from '../context/GlobalContext';
+import { useDispatch, useSelector } from 'react-redux';
+import { setDevHours } from '../store/slices/epicSlice';
+import { memo, useEffect, useState } from 'react';
+import { invoke } from '@forge/bridge';
 
-export const DeveloperTable = ({ }) => {
-    const {Developers} = useContext(GlobalContext);
-    console.log(Developers.Available);
-    
+export const DeveloperTable = memo(function DeveloperTable() {
+    const dispatch = useDispatch();
+    const [renderForce,ReRender] = useState(0);
+    const {Developers,SaveDevCounter,Selected} = useSelector((state) => {
+		return state.epics;
+	})
+    useEffect(()=>{
+        if(SaveDevCounter > 0){
+            console.log(Developers);
+            invoke('Storage.SaveData', { key: 'DevelopersList', value: Developers });
+        }
+        
+    },[SaveDevCounter])
+
+    useEffect(()=>{
+        ReRender(renderForce+1);
+    },[Selected])
     return (
         <TableTree label="Automatically controlled row expansion">
             <Headers>
@@ -19,7 +34,7 @@ export const DeveloperTable = ({ }) => {
                 <Header  width={120} >Dev Hours</Header>
             </Headers>
             <Rows
-                items={Developers.Available}
+                items={Developers}
                 render={({ FullName,ShortName, AvailableHours, Meetings, DevHours }) => (
                     <Row
                         items={[]}
@@ -38,7 +53,10 @@ export const DeveloperTable = ({ }) => {
                                         {AvailableHours === 0 ? '0':AvailableHours}
                                     </Box>
                                 )}
-                            onConfirm={(value) =>Developers.Dispatch({Type:'UPDATE-HOURS'},FullName,'AvailableHours',value)}
+                            onConfirm={async (value) =>{
+                                console.log(value);
+                                await dispatch(setDevHours({FullName,property:'AvailableHours',value}));
+                            }}
                             />
                         </Cell>
                         <Cell>
@@ -50,7 +68,10 @@ export const DeveloperTable = ({ }) => {
                                         {Meetings === 0 ? '0':Meetings}
                                     </Box>
                                 )}
-                                onConfirm={(value) => Developers.Dispatch({Type:'UPDATE-HOURS'},FullName,'Meetings',value)}
+                                onConfirm={async (value) => {
+                                    console.log(value);
+                                    await dispatch(setDevHours({FullName:FullName,property:'Meetings',value:value}));
+                                }}
                             />
                         </Cell>
                         <Cell>
@@ -62,7 +83,10 @@ export const DeveloperTable = ({ }) => {
                                         {DevHours === 0 ? '0':DevHours}
                                     </Box>
                                 )}
-                                onConfirm={(value) => Developers.Dispatch({Type:'UPDATE-HOURS'},FullName,'DevHours',value)}
+                                onConfirm={async (value) => {
+                                    console.log(value);
+                                    await dispatch(setDevHours({FullName,property:'DevHours',value}));
+                                }}
                             />
                         </Cell>
                     </Row>
@@ -70,4 +94,4 @@ export const DeveloperTable = ({ }) => {
             />
         </TableTree>
     );
-};
+});

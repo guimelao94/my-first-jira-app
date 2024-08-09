@@ -10,17 +10,14 @@ import Spinner from '@atlaskit/spinner';
 import Toggle from '@atlaskit/toggle';
 import { EpicStack } from './EpicStack';
 import { DevStack } from './DevStack';
-import GlobalContext from '../../context/GlobalContext';
+import { useSelector } from 'react-redux';
 
-export const EpicCard = ({ epicKey, style, developersList, setDevelopersList }) => {
+export const EpicCard = ({ epicKey, style}) => {
 
-    const [cardData, setCardData] = useState({});
-    const [issues, setIssues] = useState([]);
-    const [developers, setDevelopers] = useState([]);
-    const [loaded, setLoaded] = useState(false);
-    const [storage, setStorage] = useState([]);
+    const epics = useSelector((state) => {
+		return state.epics;
+	})
     const [viewDevStack, setViewDevStack] = useState(false);
-    const {state,dispatch} = useContext(GlobalContext);
     const [devStackData,setDevStackData] = useState([
         {
             FullName: 'Guimel O Gonzalez',
@@ -63,23 +60,16 @@ export const EpicCard = ({ epicKey, style, developersList, setDevelopersList }) 
         },
     });
     console.log('render');
-
+    console.log(epicKey);
+    console.log(epics.data.some(x=>x.EpicKey == epicKey));
+    console.log(epics.data.find(x=>x.EpicKey == epicKey));
     useEffect(() => {
         console.log('Pull Data');
         //HandleEpics(epicKey, setCardData, setStorage, storage)
         
     }, []);
 
-    useEffect(() => {
-        //RefreshData(storage.slice().sort((a, b) => b.idx - a.idx), setDevelopers, setIssues, setLoaded, setCardData, developersList, setDevelopersList,devStackData,setDevStackData)
-        console.log('LoadedStorage');
-        console.log(storage);
-        console.log(cardData);
-        dispatch({type:"SET",payload:cardData})
-        console.log(state);
-    }, [storage]);
-
-    if (!(cardData && loaded && storage)) {
+    if (!(epics.loaded) || !epics.data.some(x=>x.EpicKey == epicKey) || !(epics.data.find(x=>x.EpicKey == epicKey).loaded)) {
         return (<Spinner size={'xlarge'} />)
     }
 
@@ -91,9 +81,9 @@ export const EpicCard = ({ epicKey, style, developersList, setDevelopersList }) 
                 isChecked={viewDevStack}
             />
             <Stack>
-                {(viewDevStack) ? <DevStack developers={devStackData}/> : <EpicStack cardData={cardData} />}
+                {(viewDevStack && epics.data.some(x=>x.EpicKey == epicKey)) ? <DevStack developers={devStackData}/> : <EpicStack cardData={epics.data.find(x=>x.EpicKey == epicKey)} />}
                 {
-                    cardData.IssueType == 'Epic' && <IssuesTable developers={developers} issues={issues} />
+                    epics.issues.some(x=>x.EpicKey == epicKey) && epics.data.find(x=>x.EpicKey == epicKey).IssueType == 'Epic' && epics.AllIssuesLoaded && <IssuesTable developers={epics.data.find(x=>x.EpicKey == epicKey).Developers} issues={epics.issues.filter(x=>x.EpicKey == epicKey)} />
                 }
             </Stack>
         </Box>

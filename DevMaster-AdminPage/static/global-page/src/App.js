@@ -16,13 +16,9 @@ function App() {
     return (
         <Provider store={store}>
             <ProductLayout>
-                {/* <BasicGrid AvailableEpics={AvailableEpics} LoadedEpics={loadedSelectedEpics && loadedAvailableEpics} SelectedEpics={AvailableEpics.filter(x => SelectedEpics.some(y => y == x.value))} UpdateEpics={SaveSelectedEpics}>
-                    {
-                        loadedSelectedEpics && loadedAvailableEpics && SelectedEpics.map((item, index) => (
-                            <EpicCard key={index} epicKey={item} developersList={developersList} setDevelopersList={SaveDevelopersList} />
-                        ))
-                    }
-                </BasicGrid> */}
+                <BasicGrid>
+                    
+                </BasicGrid>
             </ProductLayout>
         </Provider>
 

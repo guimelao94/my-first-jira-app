@@ -1,4 +1,4 @@
-import { RefreshDevelopersList, SaveDevelopersList, UpdateHours } from "./Functions/Developers";
+import { SaveDevelopersList, UpdateHours } from "./Functions/Developers";
 
 export const DevelopersInitialValue = {
     Available:[],

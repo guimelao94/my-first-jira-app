@@ -2,6 +2,7 @@ import { EpicStack_Row } from '../TopCard_Misc';
 import Lozenge from '@atlaskit/lozenge';
 
 export const EpicStack = ({cardData}) => {
+    console.log(cardData);
     return(
         <>
             <EpicStack_Row label={"Epic Key:"} value={cardData.EpicKey}/>

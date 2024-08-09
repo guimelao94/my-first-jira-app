@@ -2,7 +2,7 @@
  * @jsxRuntime classic
  */
 /** @jsx jsx */
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { jsx } from '@emotion/react';
 
@@ -28,17 +28,10 @@ import {
 import { Content, LeftSidebar, Main, PageLayout, TopNavigation } from '@atlaskit/page-layout';
 import { Box } from '@atlaskit/primitives';
 import { DeveloperTable } from './DeveloperTable';
-import { fetchAvailableEpics, fetchSelectedEpics, GenerateIssueData, ProcessEpic } from '../store';
 import { useDispatch, useSelector } from 'react-redux';
-import { useThunk } from '../hooks/useThunk';
 import { HandleEpicThunks } from './ThunkHandlers';
-import { groupByDevs } from '../Utils/GroupingTools';
-import { RefreshDevelopersList } from '../reducers/Functions/Developers';
-import { setDevelopers } from '../store/slices/epicSlice';
 
 export const ProductLayout = ({ children }) => {
-	const [getAvailableEpics, AvailableEpicsLoading, AvailableEpicsError] = useThunk(fetchAvailableEpics);
-	const [getSelectedEpics, SelectedEpicsLoading, SelectedEpicsError] = useThunk(fetchSelectedEpics);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState(null);
 	const dispatch = useDispatch();
@@ -51,7 +44,8 @@ export const ProductLayout = ({ children }) => {
 		// getSelectedEpics();
 		// setIsLoading(true);
 		HandleEpicThunks(dispatch);
-	}, []);
+		console.log(epics.reloadCounter);
+	}, [epics.reloadCounter]);
 
 	useEffect(() => {
 		// getAvailableEpics();
@@ -59,16 +53,12 @@ export const ProductLayout = ({ children }) => {
 		// setIsLoading(true);
 		if(epics.AllIssuesLoaded){
 			console.log(epics);
-			var devs = groupByDevs(epics.issues, 'dev');
-    		RefreshDevelopersList(devs).then((data)=>{
-				console.log(data);
-				dispatch(setDevelopers(data));
-			});
 		}	
 		
 	}, [epics.AllIssuesLoaded]);
 
 	useEffect(() => {
+		console.log(epics.loaded);
 		if(epics.loaded){
 			console.log(epics);
 		}
@@ -82,17 +72,32 @@ if (error) {
 	return <div>Error fetching data...</div>
 }
 return (
-	<div>
-		<div>{epics.data.length}</div>
-		{epics.data && epics.data.map((epic) => (
-			<div>
-				<h1>{epic.EpicKey}</h1>
-				{epics.issues && epics.issues.filter(x=>x.EpicKey == epic.EpicKey).map((issue) => (
-					<p>{issue.ticketNumber}</p>
-				))}
-			</div>
-		))}
-	</div>
+	<PageLayout>
+			<TopNavigation
+				isFixed={true}
+				id="confluence-navigation"
+				skipLinkTitle="Confluence Navigation"
+			>
+				<TopNavigationContents />
+			</TopNavigation>
+			<Content testId="content">
+				<LeftSidebar
+					isFixed={false}
+					width={450}
+					id="project-navigation"
+					skipLinkTitle="Project Navigation"
+					testId="left-sidebar"
+					resizeGrabAreaLabel="Resize Current project sidebar"
+					resizeButtonLabel="Current project sidebar"
+					valueTextLabel="Width"
+				>
+					<SideNavigationContent />
+				</LeftSidebar>
+				<Main id="main-content" skipLinkTitle="Main Content">
+					{children}
+				</Main>
+			</Content>
+		</PageLayout>
 );
 }
 
