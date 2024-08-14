@@ -1,0 +1,20 @@
+modules:
+  jira:issueContext:
+    - key: devmaster-uikit-side-hello-world-issue-context
+      resource: main
+      resolver:
+        function: resolver
+      render: native
+      title: DevMaster-UIKit_Side
+      description: A hello world issue context.
+      label: Hello World!
+  function:
+    - key: resolver
+      handler: index.handler
+resources:
+  - key: main
+    path: src/frontend/index.jsx
+app:
+  runtime:
+    name: nodejs18.x
+  id: ari:cloud:ecosystem::app/ec30c174-852d-4537-a38b-38c468a3220c

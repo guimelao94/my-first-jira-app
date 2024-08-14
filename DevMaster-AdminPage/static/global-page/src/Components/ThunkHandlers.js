@@ -4,11 +4,40 @@ import { setDevelopers, setEpicDevelopers, setIssueData } from '../store/slices/
 import { groupByDevs } from "../Utils/GroupingTools";
 import { invoke, requestJira } from "@forge/bridge";
 
-export const HandleEpicThunks = async (dispatch) => {
+export const HandleEpicThunks = async (dispatch, type = 'FullRefresh') => {
   var issueList = [];
-  await dispatch(fetchAvailableEpics());
-  const selected = await dispatch(fetchSelectedEpics());
-  console.log(selected.payload);
+  let selected = null;
+  console.log(type);
+  switch (type) {
+    case 'FullRefresh':
+      await dispatch(fetchAvailableEpics());
+      selected= await dispatch(fetchSelectedEpics());
+      console.log(selected.payload);
+      await HandleEpics(dispatch, selected, issueList);
+      await HandleDevs(dispatch, issueList);
+      break;
+    case 'EpicRefresh':
+      await dispatch(fetchAvailableEpics());
+      selected = await dispatch(fetchSelectedEpics());
+      console.log(selected.payload);
+      await HandleEpics(dispatch, selected, issueList);
+      break;
+    default:
+      break;
+  }
+
+}
+
+export const HandleDevs = (dispatch, issueList) => {
+  var devs = groupByDevs(issueList, 'dev');
+  console.log(devs);
+  RefreshDevelopersList(devs).then((data) => {
+    console.log(data);
+    dispatch(setDevelopers(data));
+  });
+}
+
+export const HandleEpics = async (dispatch, selected, issueList) => {
   for (let index = 0; index < selected.payload.length; index++) {
     const element = selected.payload[index];
     var epic = await dispatch(ProcessEpic(element));
@@ -21,24 +50,17 @@ export const HandleEpicThunks = async (dispatch) => {
         const issueData = await FillIssueData({ item: issue, index: idx })
         issueList.push(issueData);
       }
-      await dispatch(setIssueData(issueList.filter(x=>x.EpicKey == epic.payload.EpicKey)));
-      const devs = groupByDevs(issueList.filter(x=>x.EpicKey == epic.payload.EpicKey), 'dev');
+      await dispatch(setIssueData(issueList.filter(x => x.EpicKey == epic.payload.EpicKey)));
+      const devs = groupByDevs(issueList.filter(x => x.EpicKey == epic.payload.EpicKey), 'dev');
       console.log(devs);
       await dispatch(setEpicDevelopers({ EpicKey: epic.payload.EpicKey, Developers: devs }));
     }
   }
-
-  var devs = groupByDevs(issueList, 'dev');
-  console.log(devs);
-  RefreshDevelopersList(devs).then((data) => {
-    console.log(data);
-    dispatch(setDevelopers(data));
-  });
 }
 
 const FillIssueData = async ({ item, index }) => {
   var customFields = {
-    OverflowTime: 0
+    Overflow: []
   }
 
   var workLogs = [];
@@ -70,16 +92,16 @@ const FillIssueData = async ({ item, index }) => {
   } else {
     customFields = storageData;
   }
-
+  
   var issueData = {
     idx: index,
     EpicKey: item.fields.parent.key,
-    dev: item.fields.assignee?.displayName,
+    dev: customFields.Developer != null ? customFields.Developer.FullName : "",
     ticketNumber: item.key,
     remainingTime: item.fields?.timeestimate,
     timespent: item.fields?.timespent,
     originalestimate: item.fields?.timeoriginalestimate,
-    overflowTime: customFields.OverflowTime,
+    overflowTime: customFields.Overflow,
     worklogs: workLogs
   }
   console.log(issueData);
@@ -104,7 +126,7 @@ export const RefreshDevelopersList = async (devs) => {
     console.log(devsList);
     console.log(returnedData);
     if (devsList.length != returnedData.length) {
-      const unionArray = [...new Set([...devsList.filter(x=>!returnedData.some(dev=>dev.FullName === x.FullName)), ...returnedData.filter(x=>devsList.some(dev=>dev.FullName === x.FullName))])];
+      const unionArray = [...new Set([...devsList.filter(x => !returnedData.some(dev => dev.FullName === x.FullName)), ...returnedData.filter(x => devsList.some(dev => dev.FullName === x.FullName))])];
       devsList = unionArray;
       console.log(unionArray);
     }

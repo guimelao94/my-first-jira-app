@@ -24,7 +24,7 @@ const epicsSlice = createSlice({
       state.loaded = false;
       console.log(action.payload);
       state.Developers = action.payload;
-      if (!state.data.some(x => x.Developers == null) && state.data.length === state.Selected.length && state.Developers.length > 0) {
+      if (state.data && !state.data.some(x => x.Developers == null) && state.data.length === state.Selected.length && state.Developers.length > 0) {
         console.log('loaded');
         state.loaded = true;
       }
@@ -39,8 +39,11 @@ const epicsSlice = createSlice({
           epic.Developers = action.payload.Developers;
         }
       }
-      console.log(state.data.filter(x => x.Developers == null));
-      if (!state.data && !state.data.some(x => x.Developers == null) && state.Developers.length > 0) {
+      console.log(!state.data.some(x => x.Developers == null));
+      console.log(state.data.length);
+      console.log(state.Developers ? state.Developers.length:0);
+      if (state.data && !state.data.some(x => x.Developers == null) && state.Developers && state.Developers.length > 0) {
+        console.log('DevelopersFull');
         state.DevelopersFull = groupByDevs(state.issues,'dev');
         console.log('loaded');
         state.loaded = true;
@@ -49,6 +52,13 @@ const epicsSlice = createSlice({
     setIssueData(state, action) {
       state.processed = true;
       state.isLoading = false;
+      const sumOverflow = (issue) =>{
+        console.log(issue);
+        if(issue.overflowTime.length == 0) return 0;
+        var sum = issue.overflowTime.reduce((total, item) => total + (item.TimeSpent  || 0),0);
+        console.log(sum);
+        return sum;
+      }
       if (action.payload) {
         console.log(action.payload);
         if(state.issues == null) state.issues = [];
@@ -58,7 +68,7 @@ const epicsSlice = createSlice({
               epic.TimeRemaining = convertToHours(action.payload.reduce((total, item) => total + (item['remainingTime'] || 0), 0));
               epic.TimeSpent = convertToHours(action.payload.reduce((total, item) => total + (item['timespent'] || 0), 0));
               epic.OriginalEstimate = convertToHours(action.payload.reduce((total, item) => total + (item['originalestimate'] || 0), 0));
-              epic.OverflowTime = convertToHours(action.payload.reduce((total, item) => total + (item['overflowTime'] || 0), 0));
+              epic.OverflowTime = convertToHours(action.payload.reduce((total, item) => total + sumOverflow(item), 0));
               epic.Developers = groupByDevs(action.payload,'dev');
               epic.loaded = true;
           }
@@ -81,6 +91,9 @@ const epicsSlice = createSlice({
           developer[property] = value;
         }
       }
+      state.data = null;
+      state.issues = [];
+      state.DevelopersFull = [];
       state.SaveDevCounter++;
     }
   },

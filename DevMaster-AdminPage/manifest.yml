@@ -24,20 +24,22 @@ modules:
         function: resolver
       title: DevMaster-Landing
   jira:issueContext:
-    - key: devmaster-sidebar
-      resource: sidebar
+    - key: devmaster-sidebar-ui-kit
+      resource: sidebar-ui-kit
       resolver:
         function: resolver
-      title: DevMaster-Sidebar
-      label: DevMaster
+      render: native
+      title: DevMaster - Issue Tool
+      description: Issue tools.
+      label: Add Workflow ...
   function:
     - key: resolver
       handler: index.handler
 resources:
   - key: global
     path: static/global-page/build
-  - key: sidebar
-    path: static/sidebar/build
+  - key: sidebar-ui-kit
+    path: src/sidebar-ui-kit/index.jsx
 app:
   runtime:
     name: nodejs18.x
@@ -54,6 +56,7 @@ permissions:
   scopes:
     - read:jira-work
     - storage:app
+    - read:jira-user
   content:
     styles:
       - 'unsafe-inline'

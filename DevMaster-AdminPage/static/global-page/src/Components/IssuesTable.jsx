@@ -10,6 +10,13 @@ export const IssuesTable = ({developers,issues }) => {
     const StackStyle = xcss({textAlign: 'center'});
     const HeaderStyle = xcss({justifyContent: 'center'});
 
+    const sumOverflowHours = (overflowTime,dev) => {
+        console.log(overflowTime);
+        console.log(dev);
+        var time = overflowTime.filter(x=>x.Developer == dev).reduce((total, item) => total + (item['TimeSpent'] || 0), 0)
+        console.log(time);
+        return time;
+    }
     if(issues.some(z=>z.ticketNumber == 'DMA-5')){
         console.log(issues.filter(z=>z.ticketNumber == 'DMA-5'));
         console.log(issues.filter(z=>z.ticketNumber == 'DMA-5')[0].worklogs.find(x=>x.Developer == 'Julius Cesar'));
@@ -41,7 +48,7 @@ export const IssuesTable = ({developers,issues }) => {
                                 <Inline>
                                     {developer.FullName == dev&&<span style={{paddingRight:'5px'}}><Lozenge appearance="new">{convertToHours(developer.FullName == dev ? remainingTime:0)}</Lozenge></span>}
                                     {worklogs.some(x=>x.Developer == developer.FullName)&&<span style={{paddingRight:'5px'}}><Lozenge style={{paddingRight:'.5em'}}>{convertToHours(worklogs.length > 0 ? worklogs.find(x=>x.Developer == developer.FullName)?.TimeSpent:0)}</Lozenge></span>}
-                                    {developer.FullName == dev&&<span><Lozenge appearance="inprogress">{convertToHours(developer.FullName == dev ? overflowTime:0)}</Lozenge></span>}
+                                    {((overflowTime && overflowTime.length > 0 && overflowTime.some(x=>x.Developer == developer.FullName)))&&<span><Lozenge appearance="inprogress">{convertToHours(overflowTime && overflowTime.length > 0 && overflowTime.some(x=>x.Developer == developer.FullName) ? sumOverflowHours(overflowTime,developer.FullName):0)}</Lozenge></span>}
                                 </Inline>
                             </Cell>
                         ))

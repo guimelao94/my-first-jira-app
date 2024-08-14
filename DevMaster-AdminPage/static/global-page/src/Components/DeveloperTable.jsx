@@ -14,6 +14,8 @@ export const DeveloperTable = memo(function DeveloperTable() {
     const {Developers,SaveDevCounter,Selected} = useSelector((state) => {
 		return state.epics;
 	})
+
+    console.log(Developers);
     useEffect(()=>{
         if(SaveDevCounter > 0){
             console.log(Developers);

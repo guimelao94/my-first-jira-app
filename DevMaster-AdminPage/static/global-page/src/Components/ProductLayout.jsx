@@ -30,6 +30,7 @@ import { Box } from '@atlaskit/primitives';
 import { DeveloperTable } from './DeveloperTable';
 import { useDispatch, useSelector } from 'react-redux';
 import { HandleEpicThunks } from './ThunkHandlers';
+import Spinner from '@atlaskit/spinner';
 
 export const ProductLayout = ({ children }) => {
 	const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +44,7 @@ export const ProductLayout = ({ children }) => {
 		// getAvailableEpics();
 		// getSelectedEpics();
 		// setIsLoading(true);
-		HandleEpicThunks(dispatch);
+		HandleEpicThunks(dispatch,'FullRefresh');
 		console.log(epics.reloadCounter);
 	}, [epics.reloadCounter]);
 
@@ -56,6 +57,13 @@ export const ProductLayout = ({ children }) => {
 		}	
 		
 	}, [epics.AllIssuesLoaded]);
+
+	useEffect(()=>{
+		console.log(epics.SaveDevCounter);
+		if(epics.SaveDevCounter > 0){
+			HandleEpicThunks(dispatch,'EpicRefresh');
+		}
+	},[epics.SaveDevCounter]);
 
 	useEffect(() => {
 		console.log(epics.loaded);
@@ -81,7 +89,7 @@ return (
 				<TopNavigationContents />
 			</TopNavigation>
 			<Content testId="content">
-				<LeftSidebar
+				{(epics.Selected && epics.Selected.length > 0) && <LeftSidebar
 					isFixed={false}
 					width={450}
 					id="project-navigation"
@@ -92,7 +100,7 @@ return (
 					valueTextLabel="Width"
 				>
 					<SideNavigationContent />
-				</LeftSidebar>
+				</LeftSidebar>}
 				<Main id="main-content" skipLinkTitle="Main Content">
 					{children}
 				</Main>
@@ -120,13 +128,16 @@ function TopNavigationContents() {
 }
 
 const SideNavigationContent = ({ }) => {
+	const {Developers} = useSelector((state) => {
+		return state.epics;
+	})
 	return (
 		<SideNavigation label="Project navigation" testId="side-navigation">
 			<NavigationHeader>
 				<Header description="Use this section to indicate how many hours each developer is available to work on the selected epics">Developer Time Allocation</Header>
 			</NavigationHeader>
 			<Box>
-				<DeveloperTable />
+				{(Developers && Developers.length > 0) ? <DeveloperTable /> : <Spinner size={'xlarge'} />}
 			</Box>
 		</SideNavigation>
 	);
