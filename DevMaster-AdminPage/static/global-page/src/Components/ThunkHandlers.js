@@ -1,6 +1,6 @@
 import { useDispatch } from "react-redux";
 import { fetchAvailableEpics, fetchSelectedEpics, ProcessEpic } from "../store";
-import { setDevelopers, setEpicDevelopers, setIssueData } from '../store/slices/epicSlice';
+import { reOrderEpics, setDevelopers, setEpicDevelopers, setIssueData } from '../store/slices/epicSlice';
 import { groupByDevs } from "../Utils/GroupingTools";
 import { invoke, requestJira } from "@forge/bridge";
 
@@ -15,12 +15,14 @@ export const HandleEpicThunks = async (dispatch, type = 'FullRefresh') => {
       console.log(selected.payload);
       await HandleEpics(dispatch, selected, issueList);
       await HandleDevs(dispatch, issueList);
+      await dispatch(reOrderEpics());
       break;
     case 'EpicRefresh':
       await dispatch(fetchAvailableEpics());
       selected = await dispatch(fetchSelectedEpics());
       console.log(selected.payload);
       await HandleEpics(dispatch, selected, issueList);
+      await dispatch(reOrderEpics());
       break;
     default:
       break;
@@ -98,7 +100,7 @@ const FillIssueData = async ({ item, index }) => {
     EpicKey: item.fields.parent.key,
     dev: customFields.Developer != null ? customFields.Developer.FullName : "",
     ticketNumber: item.key,
-    remainingTime: item.fields?.timeestimate,
+    remainingTime: item.fields?.timeestimate ? (item.fields?.timeestimate + (customFields.Overflow ? (customFields.Overflow.reduce((total, item) => total + (item['TimeSpent'] || 0), 0)) : 0)) : 0,
     timespent: item.fields?.timespent,
     originalestimate: item.fields?.timeoriginalestimate,
     overflowTime: customFields.Overflow,

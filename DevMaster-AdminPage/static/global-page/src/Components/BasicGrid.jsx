@@ -50,8 +50,8 @@ const BasicGrid = ({children}) => {
 			<Box style={{ gridArea: 'content',backgroundColor:'rgba(9, 30, 66, 0.06)' }}>
 				<ResponsiveGrid>
 					{
-                        data && Available && Selected && Selected.map((item, index) => (
-                            <EpicCard key={index} epicKey={item} />
+                        data && Available && Selected && data.map((item, index) => (
+                            <EpicCard key={index} epicKey={item.EpicKey} />
                         ))
                     }
 				</ResponsiveGrid>

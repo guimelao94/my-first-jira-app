@@ -30,6 +30,9 @@ const epicsSlice = createSlice({
       }
 
     },
+    reOrderEpics(state, action) {
+      state.data.sort((a, b) => new Date(a.DueDate) - new Date(b.DueDate));
+    },
     setEpicDevelopers(state, action) {
       state.loaded = false;
       const idx = state.data.indexOf(x => x.EpicKey === action.payload.EpicKey);
@@ -54,7 +57,7 @@ const epicsSlice = createSlice({
       state.isLoading = false;
       const sumOverflow = (issue) =>{
         console.log(issue);
-        if(issue.overflowTime.length == 0) return 0;
+        if(!issue.overflowTime || issue.overflowTime.length == 0) return 0;
         var sum = issue.overflowTime.reduce((total, item) => total + (item.TimeSpent  || 0),0);
         console.log(sum);
         return sum;
@@ -85,12 +88,7 @@ const epicsSlice = createSlice({
       }
     },
     setDevHours(state, action) {
-      var { FullName, property, value } = action.payload;
-      for (let developer of state.Developers) {
-        if (developer.FullName === FullName) {
-          developer[property] = value;
-        }
-      }
+      state.Developers = action.payload;
       state.data = null;
       state.issues = [];
       state.DevelopersFull = [];
@@ -163,5 +161,5 @@ const epicsSlice = createSlice({
 
   }
 });
-export const { setDevelopers, setEpicDevelopers, setIssueData, setDevHours } = epicsSlice.actions;
+export const { setDevelopers, setEpicDevelopers, setIssueData, setDevHours, reOrderEpics } = epicsSlice.actions;
 export const epicsReducer = epicsSlice.reducer;

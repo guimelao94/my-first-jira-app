@@ -18,30 +18,6 @@ export const EpicCard = ({ epicKey, style}) => {
 		return state.epics;
 	})
     const [viewDevStack, setViewDevStack] = useState(false);
-    const [devStackData,setDevStackData] = useState([
-        {
-            FullName: 'Guimel O Gonzalez',
-            TotalHours: 20.5,
-            DaysWorth: 12,
-            DaysAvailable: 9,
-            StartDate: '7/25/2024',
-            OnTrack: 'On Track',
-            DoneBy: '7/25/2024',
-            OverflowHours: 7.5,
-            EpicKey: 'DMA-2'
-        },
-        {
-            FullName: 'Julius Cesar',
-            TotalHours: 21,
-            DaysWorth: 11,
-            DaysAvailable: 7,
-            StartDate: '7/24/2024',
-            OnTrack: 'Off Track',
-            DoneBy: '7/27/2024',
-            OverflowHours: 2.5,
-            EpicKey: 'DMA-2'
-        }
-    ]);
 
     const cardStyles = xcss({
         padding: 'space.050',
@@ -81,7 +57,7 @@ export const EpicCard = ({ epicKey, style}) => {
                 isChecked={viewDevStack}
             />
             <Stack>
-                {(viewDevStack && epics.data.some(x=>x.EpicKey == epicKey)) ? <DevStack developers={devStackData}/> : <EpicStack cardData={epics.data.find(x=>x.EpicKey == epicKey)} />}
+                {(viewDevStack && epics.data.some(x=>x.EpicKey == epicKey)) ? <DevStack epicKey={epicKey}/> : <EpicStack cardData={epics.data.find(x=>x.EpicKey == epicKey)} />}
                 {
                     epics.issues.some(x=>x.EpicKey == epicKey) && epics.data.find(x=>x.EpicKey == epicKey).IssueType == 'Epic' && epics.AllIssuesLoaded && <IssuesTable developers={epics.data.find(x=>x.EpicKey == epicKey).Developers} issues={epics.issues.filter(x=>x.EpicKey == epicKey)} />
                 }

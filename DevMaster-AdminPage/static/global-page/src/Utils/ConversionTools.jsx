@@ -17,3 +17,4 @@ export const convertToCustom = (seconds) =>{
 
     return `${hours}h${minutes}m`;
 }
+

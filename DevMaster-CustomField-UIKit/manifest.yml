@@ -1,0 +1,20 @@
+modules:
+  jira:customField:
+    - key: devmaster-customfield-uikit-custom-field-ui-kit-2-hello-world
+      name: DevMaster-CustomField-UIKit
+      description: A hello world custom field.
+      type: string
+      render: native
+      resource: main
+      edit:
+        resource: edit
+        render: native
+resources:
+  - key: main
+    path: src/frontend/index.jsx
+  - key: edit
+    path: src/frontend/edit.jsx
+app:
+  runtime:
+    name: nodejs18.x
+  id: ari:cloud:ecosystem::app/b73de377-4ce0-463b-8787-4197560c45f5
