@@ -9,9 +9,7 @@ function App() {
     return (
         <Provider store={store}>
             <ProductLayout>
-                <BasicGrid>
-                    
-                </BasicGrid>
+                
             </ProductLayout>
         </Provider>
 

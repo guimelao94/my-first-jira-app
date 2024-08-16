@@ -1,10 +1,10 @@
 import { useDispatch } from "react-redux";
 import { fetchAvailableEpics, fetchSelectedEpics, ProcessEpic } from "../store";
-import { reOrderEpics, setDevelopers, setEpicDevelopers, setIssueData } from '../store/slices/epicSlice';
+import { reOrderEpics, setDevelopers, setEpicDevelopers, setEpicDevStack, setIssueData } from '../store/slices/epicSlice';
 import { groupByDevs } from "../Utils/GroupingTools";
 import { invoke, requestJira } from "@forge/bridge";
 
-export const HandleEpicThunks = async (dispatch, type = 'FullRefresh') => {
+export const HandleEpicThunks = async (dispatch, type = 'FullRefresh',epics) => {
   var issueList = [];
   let selected = null;
   console.log(type);
@@ -12,17 +12,23 @@ export const HandleEpicThunks = async (dispatch, type = 'FullRefresh') => {
     case 'FullRefresh':
       await dispatch(fetchAvailableEpics());
       selected= await dispatch(fetchSelectedEpics());
-      console.log(selected.payload);
+      //console.log(selected.payload);
       await HandleEpics(dispatch, selected, issueList);
       await HandleDevs(dispatch, issueList);
       await dispatch(reOrderEpics());
+      const resp = await dispatch(setEpicDevStack());
+      console.log(resp.payload);
       break;
     case 'EpicRefresh':
       await dispatch(fetchAvailableEpics());
       selected = await dispatch(fetchSelectedEpics());
-      console.log(selected.payload);
+      //console.log(selected.payload);
       await HandleEpics(dispatch, selected, issueList);
       await dispatch(reOrderEpics());
+      // dispatch(setEpicDevStack()).unwrap().then((returneddata)=>{
+      //   console.log(epics);
+      // });
+      
       break;
     default:
       break;
@@ -30,20 +36,19 @@ export const HandleEpicThunks = async (dispatch, type = 'FullRefresh') => {
 
 }
 
-export const HandleDevs = (dispatch, issueList) => {
+export const HandleDevs = async (dispatch, issueList) => {
   var devs = groupByDevs(issueList, 'dev');
   console.log(devs);
-  RefreshDevelopersList(devs).then((data) => {
-    console.log(data);
-    dispatch(setDevelopers(data));
-  });
+  var data = await RefreshDevelopersList(devs);
+  console.log(data);
+  await dispatch(setDevelopers(data));
 }
 
 export const HandleEpics = async (dispatch, selected, issueList) => {
   for (let index = 0; index < selected.payload.length; index++) {
     const element = selected.payload[index];
     var epic = await dispatch(ProcessEpic(element));
-    console.log(epic);
+    //console.log(epic);
     if (epic.payload) {
       for (let idx = 0; idx < epic.payload.Issues.length; idx++) {
         const issue = epic.payload.Issues[idx];
@@ -54,7 +59,7 @@ export const HandleEpics = async (dispatch, selected, issueList) => {
       }
       await dispatch(setIssueData(issueList.filter(x => x.EpicKey == epic.payload.EpicKey)));
       const devs = groupByDevs(issueList.filter(x => x.EpicKey == epic.payload.EpicKey), 'dev');
-      console.log(devs);
+      //console.log(devs);
       await dispatch(setEpicDevelopers({ EpicKey: epic.payload.EpicKey, Developers: devs }));
     }
   }
@@ -67,8 +72,8 @@ const FillIssueData = async ({ item, index }) => {
 
   var workLogs = [];
 
-  console.log(item);
-  console.log(index);
+  //console.log(item);
+  //console.log(index);
   const jql = await requestJira(`/rest/api/3/issue/${item.key}/worklog`);
   const returnedData = await jql.json();
   workLogs = Object.entries(
@@ -89,7 +94,7 @@ const FillIssueData = async ({ item, index }) => {
   if (Object.keys(storageData).length === 0) {
     console.log('empty');
     invoke('Storage.SaveData', { key: item.key, value: customFields }).then((storageData) => {
-      console.log(storageData);
+      //console.log(storageData);
     });
   } else {
     customFields = storageData;
@@ -106,7 +111,7 @@ const FillIssueData = async ({ item, index }) => {
     overflowTime: customFields.Overflow,
     worklogs: workLogs
   }
-  console.log(issueData);
+  //console.log(issueData);
   return issueData;
 
 }
@@ -125,17 +130,17 @@ export const RefreshDevelopersList = async (devs) => {
     console.log('empty');
     return devsList;
   } else {
-    console.log(devsList);
-    console.log(returnedData);
+    //console.log(devsList);
+    //console.log(returnedData);
     if (devsList.length != returnedData.length) {
       const unionArray = [...new Set([...devsList.filter(x => !returnedData.some(dev => dev.FullName === x.FullName)), ...returnedData.filter(x => devsList.some(dev => dev.FullName === x.FullName))])];
       devsList = unionArray;
-      console.log(unionArray);
+      //console.log(unionArray);
     }
     else {
       devsList = returnedData;
     }
-    console.log(devsList);
+    //console.log(devsList);
     return devsList;
   }
 }

@@ -2,6 +2,7 @@ import { createSlice } from '@reduxjs/toolkit';
 import { fetchSelectedEpics, fetchAvailableEpics, ProcessEpic, SaveSelectedEpics } from '../thunks/EpicsThunks';
 import { convertToHours } from '../../Utils/ConversionTools';
 import { groupByDevs } from '../../Utils/GroupingTools';
+import { HandleDevStacks } from './Functions/DevStack';
 
 const epicsSlice = createSlice({
   name: 'epics',
@@ -17,7 +18,8 @@ const epicsSlice = createSlice({
     loaded: false,
     AllIssuesLoaded: false,
     error: null,
-    reloadCounter: 0
+    reloadCounter: 0,
+    AllDevStacksLoaded:false
   },
   reducers: {
     setDevelopers(state, action) {
@@ -32,6 +34,9 @@ const epicsSlice = createSlice({
     },
     reOrderEpics(state, action) {
       state.data.sort((a, b) => new Date(a.DueDate) - new Date(b.DueDate));
+    },
+    setEpicDevStack(state,action){
+        HandleDevStacks(state);
     },
     setEpicDevelopers(state, action) {
       state.loaded = false;
@@ -132,6 +137,7 @@ const epicsSlice = createSlice({
       state.issues = [];
       state.Developers = [];
       state.DevelopersFull = [];
+      state.AllDevStacksLoaded = false;
       state.reloadCounter++;
       //state.reload = true;
       //state.AllIssuesLoaded = false;
@@ -161,5 +167,5 @@ const epicsSlice = createSlice({
 
   }
 });
-export const { setDevelopers, setEpicDevelopers, setIssueData, setDevHours, reOrderEpics } = epicsSlice.actions;
+export const { setDevelopers, setEpicDevelopers, setIssueData, setDevHours, reOrderEpics,setEpicDevStack } = epicsSlice.actions;
 export const epicsReducer = epicsSlice.reducer;

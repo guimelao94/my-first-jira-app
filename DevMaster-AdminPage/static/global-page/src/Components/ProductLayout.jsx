@@ -31,6 +31,8 @@ import { DeveloperTable } from './DeveloperTable';
 import { useDispatch, useSelector } from 'react-redux';
 import { HandleEpicThunks } from './ThunkHandlers';
 import Spinner from '@atlaskit/spinner';
+import BasicGrid from './BasicGrid';
+import { EpicCard } from './EpicCard/EpicCard';
 
 export const ProductLayout = ({ children }) => {
 	const [isLoading, setIsLoading] = useState(false);
@@ -41,46 +43,45 @@ export const ProductLayout = ({ children }) => {
 	})
 
 	useEffect(() => {
-		// getAvailableEpics();
-		// getSelectedEpics();
-		// setIsLoading(true);
-		HandleEpicThunks(dispatch,'FullRefresh');
+		HandleEpicThunks(dispatch, 'FullRefresh',epics);
 		console.log(epics.reloadCounter);
+		console.log(epics);
 	}, [epics.reloadCounter]);
 
 	useEffect(() => {
-		// getAvailableEpics();
-		// getSelectedEpics();
-		// setIsLoading(true);
-		if(epics.AllIssuesLoaded){
+		if (epics.AllIssuesLoaded) {
 			console.log(epics);
-		}	
-		
+		}
+
 	}, [epics.AllIssuesLoaded]);
 
-	useEffect(()=>{
+	useEffect(() => {
+		console.log(epics);
+	}, [epics.AllDevStacksLoaded]);
+
+	useEffect(() => {
 		console.log(epics.SaveDevCounter);
-		if(epics.SaveDevCounter > 0){
-			HandleEpicThunks(dispatch,'EpicRefresh');
+		if (epics.SaveDevCounter > 0) {
+			HandleEpicThunks(dispatch, 'EpicRefresh',epics);
 		}
-	},[epics.SaveDevCounter]);
+	}, [epics.SaveDevCounter]);
 
 	useEffect(() => {
 		console.log(epics.loaded);
-		if(epics.loaded){
+		if (epics.loaded) {
 			console.log(epics);
 		}
 	}, [epics.loaded]);
-	
-if (isLoading) {
-	return <div>Loading...</div>
-}
 
-if (error) {
-	return <div>Error fetching data...</div>
-}
-return (
-	<PageLayout>
+	if (isLoading) {
+		return <div>Loading...</div>
+	}
+
+	if (error) {
+		return <div>Error fetching data...</div>
+	}
+	return (
+		<PageLayout>
 			<TopNavigation
 				isFixed={true}
 				id="confluence-navigation"
@@ -102,11 +103,17 @@ return (
 					<SideNavigationContent />
 				</LeftSidebar>}
 				<Main id="main-content" skipLinkTitle="Main Content">
-					{children}
+					<BasicGrid>
+						{
+							epics.data && epics.Available && epics.Selected && epics.data.map((item, index) => (
+								<EpicCard key={index} epicKey={item.EpicKey} />
+							))
+						}
+					</BasicGrid>
 				</Main>
 			</Content>
 		</PageLayout>
-);
+	);
 }
 
 function TopNavigationContents() {
@@ -128,7 +135,7 @@ function TopNavigationContents() {
 }
 
 const SideNavigationContent = ({ }) => {
-	const {Developers} = useSelector((state) => {
+	const { Developers } = useSelector((state) => {
 		return state.epics;
 	})
 	return (
