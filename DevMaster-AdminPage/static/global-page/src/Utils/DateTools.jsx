@@ -18,9 +18,23 @@ export const addWeekdays = (startDate, daysToAdd) => {
 export const getDifferenceInDays = (date1Str, date2Str) => {
     const date1 = new Date(date1Str);
     const date2 = new Date(date2Str);
-
-    const diffInTime = date2.getTime() - date1.getTime();
+  
+    // Ensure date2 is later than date1
+    if (date2 < date1) {
+      return 0; // Or handle this case as needed
+    }
+  
+    let diffInTime = date2.getTime() - date1.getTime();
     const diffInDays = Math.ceil(diffInTime / (1000 * 3600 * 24));
-
-    return diffInDays;
+  
+    // Count the number of weekends between the dates
+    let weekends = 0;
+    for (let i = 0; i < diffInDays; i++) {
+      const day = new Date(date1.getTime() + i * (1000 * 3600 * 24)).getDay();
+      if (day === 0 || day === 6) {
+        weekends++;
+      }
+    }
+  
+    return diffInDays - weekends;
 }
