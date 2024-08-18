@@ -1,8 +1,9 @@
 import { StringToDate } from "../../../Utils/ConversionTools";
-import { addWeekdays, getDifferenceInDays } from "../../../Utils/DateTools";
+import { addWeekdays, getDifferenceInDays, isWeekend, nextWeekday } from "../../../Utils/DateTools";
 
 
 export const HandleDevStacks = (state) => {
+    var today = new Date();
     for (let index = 0; index < state.data.length; index++) {
         var currentEpic = state.data[index];
         var prevEpic = index === 0 ? null : state.data[index - 1];
@@ -29,7 +30,7 @@ export const HandleDevStacks = (state) => {
 
             return {
                 ...d,
-                StartDate: index === 0 || !lastWorkedEpic ? (new Date()).toLocaleDateString() : addWeekdays(lastWorkedEpic.DevStack.find(x=>x.FullName === d.FullName).DoneBy, 1),
+                StartDate: index === 0 || !lastWorkedEpic ? nextWeekday(today).toLocaleDateString() : addWeekdays(lastWorkedEpic.DevStack.find(x=>x.FullName === d.FullName).DoneBy, 1),
             }
         });
 

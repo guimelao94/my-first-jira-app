@@ -33,6 +33,7 @@ import { HandleEpicThunks } from './ThunkHandlers';
 import Spinner from '@atlaskit/spinner';
 import BasicGrid from './BasicGrid';
 import { EpicCard } from './EpicCard/EpicCard';
+import { TimeOffTable } from './TimeOffTable';
 
 export const ProductLayout = ({ children }) => {
 	const [isLoading, setIsLoading] = useState(false);
@@ -144,7 +145,14 @@ const SideNavigationContent = ({ }) => {
 				<Header description="Use this section to indicate how many hours each developer is available to work on the selected epics">Developer Time Allocation</Header>
 			</NavigationHeader>
 			<Box>
-				{(Developers && Developers.length > 0) ? <DeveloperTable /> : <Spinner size={'xlarge'} />}
+				{(Developers && Developers.length > 0) ? <DeveloperTable /> : <Spinner size={'large'} />}
+			</Box>
+
+			<NavigationHeader>
+				<Header description="Scheduled developer time off">Developer Time Off</Header>
+			</NavigationHeader>
+			<Box>
+				{(Developers && Developers.length > 0) ? <TimeOffTable /> : <Spinner size={'large'} />}
 			</Box>
 		</SideNavigation>
 	);
