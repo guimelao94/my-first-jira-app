@@ -59,7 +59,7 @@ export const EpicCard = ({ epicKey, style}) => {
             <Stack>
                 {(viewDevStack && epics.data.some(x=>x.EpicKey == epicKey)) ? <DevStack epicKey={epicKey}/> : <EpicStack cardData={epics.data.find(x=>x.EpicKey == epicKey)} />}
                 {
-                    epics.issues.some(x=>x.EpicKey == epicKey) && epics.data.find(x=>x.EpicKey == epicKey).IssueType == 'Epic' && epics.AllIssuesLoaded && <IssuesTable developers={epics.data.find(x=>x.EpicKey == epicKey).Developers} issues={epics.issues.filter(x=>x.EpicKey == epicKey)} />
+                    epics.issues.some(x=>x.EpicKey == epicKey) && epics.data.find(x=>x.EpicKey == epicKey).IssueType == 'Epic' && epics.AllIssuesLoaded && epics.AllDevStacksLoaded && <IssuesTable developers={epics.data.find(x=>x.EpicKey == epicKey).Developers} EpicKey={epicKey} issues={epics.issues.filter(x=>x.EpicKey == epicKey)} />
                 }
             </Stack>
         </Box>

@@ -8,12 +8,18 @@ import { ExampleBox } from './EpicCard/EpicCard';
 const responsiveStyles = xcss({
 	[media.above.xxs]: { gridTemplateColumns: 'repeat(1, 1fr)' },
 	[media.above.xs]: {
-		gridTemplateColumns: 'repeat(2, 1fr)',
+		gridTemplateColumns: 'repeat(1, 1fr)',
 	},
 	[media.above.sm]: {
-		gridTemplateColumns: 'repeat(3, 1fr)',
+		gridTemplateColumns: 'repeat(1, 1fr)',
+	},
+	[media.above.md]: {
+		gridTemplateColumns: 'repeat(2, 1fr)',
 	},
 	[media.above.lg]: {
+		gridTemplateColumns: 'repeat(3, 1fr)',
+	},
+	[media.above.xl]: {
 		gridTemplateColumns: 'repeat(3, 1fr)',
 	},
     padding: 'space.100'
