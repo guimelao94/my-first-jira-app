@@ -52,7 +52,7 @@ const App = () => {
         var submission = {
             TimeSpent: timeSpent * 3600,
             Description: description,
-            Developer: Developer.displayName,
+            Developer: {FullName:Developer.displayName,AccountID:context.accountId},
             TimeStamp: (new Date()).toLocaleString()
         }
         console.log(Developer);

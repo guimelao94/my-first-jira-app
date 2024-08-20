@@ -19,7 +19,7 @@ export const IssuesTable = ({ developers, issues, EpicKey }) => {
     const sumOverflowHours = (overflowTime, dev) => {
         console.log(overflowTime);
         console.log(dev);
-        var time = overflowTime.filter(x => x.Developer == dev).reduce((total, item) => total + (item['TimeSpent'] || 0), 0)
+        var time = overflowTime.filter(x => x.Developer.FullName == dev).reduce((total, item) => total + (item['TimeSpent'] || 0), 0)
         console.log(time);
         return time;
     }
@@ -37,7 +37,7 @@ export const IssuesTable = ({ developers, issues, EpicKey }) => {
             <Headers>
                 <Header width={145}>Ticket #</Header>
                 {developers.map((developer) => (
-                    <Header width={145} className={currentEpic.DevStack.some(d=>d.FullName == developer.FullName && d.OnTrack == "Off Track")?"DevOffTrack":""}>
+                    <Header width={145} className={currentEpic.DevStack && currentEpic.DevStack.some(d=>d.FullName == developer.FullName && d.OnTrack == "Off Track")?"DevOffTrack":""}>
                         {developer.ShortName}
                         <span style={{ marginLeft: '.3em' }}><Lozenge appearance="new">{convertToHours(developer.RemainingWork)}</Lozenge></span>
                     </Header>
@@ -53,11 +53,11 @@ export const IssuesTable = ({ developers, issues, EpicKey }) => {
                     >
                         <Cell singleLine>{ticketNumber}</Cell>
                         {developers.map((developer) => (
-                            <Cell className={currentEpic.DevStack.some(d=>d.FullName == developer.FullName && d.OnTrack == "Off Track")?"DevOffTrack":""}>
+                            <Cell className={currentEpic.DevStack && currentEpic.DevStack.some(d=>d.FullName == developer.FullName && d.OnTrack == "Off Track")?"DevOffTrack":""}>
                                     <Inline>
-                                        {developer.FullName == dev && <span style={{ paddingRight: '5px' }}><Lozenge appearance="new">{convertToHours(developer.FullName == dev ? remainingTime : 0)}</Lozenge></span>}
+                                        {developer.FullName == dev.FullName && <span style={{ paddingRight: '5px' }}><Lozenge appearance="new">{convertToHours(developer.FullName == dev.FullName ? remainingTime : 0)}</Lozenge></span>}
                                         {worklogs.some(x => x.Developer == developer.FullName) && <span style={{ paddingRight: '5px' }}><Lozenge style={{ paddingRight: '.5em' }}>{convertToHours(worklogs.length > 0 ? worklogs.find(x => x.Developer == developer.FullName)?.TimeSpent : 0)}</Lozenge></span>}
-                                        {((overflowTime && overflowTime.length > 0 && overflowTime.some(x => x.Developer == developer.FullName))) && <span><Lozenge appearance="inprogress">{convertToHours(overflowTime && overflowTime.length > 0 && overflowTime.some(x => x.Developer == developer.FullName) ? sumOverflowHours(overflowTime, developer.FullName) : 0)}</Lozenge></span>}
+                                        {((overflowTime && overflowTime.length > 0 && overflowTime.some(x => x.Developer.FullName == developer.FullName))) && <span><Lozenge appearance="inprogress">{convertToHours(overflowTime && overflowTime.length > 0 && overflowTime.some(x => x.Developer.FullName == developer.FullName) ? sumOverflowHours(overflowTime, developer.FullName) : 0)}</Lozenge></span>}
                                     </Inline>
                             </Cell>
 

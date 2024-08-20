@@ -22,7 +22,7 @@ export const HandleDevStacks = (state) => {
     
         developers = developers.map((d) => ({
             ...d,
-            DaysWorth: d.TotalHours ? Math.ceil(d.TotalHours / (state.Developers.find(z => z.FullName === d.FullName).DevHours / 5)) : 0,
+            DaysWorth: (d.TotalHours && state.Developers.find(z => z.FullName === d.FullName).DevHours > 0) ? Math.ceil(d.TotalHours / (state.Developers.find(z => z.FullName === d.FullName).DevHours / 5)) : 0,
         }));
     
         developers = developers.map((d) => {
@@ -61,13 +61,14 @@ export const HandleDevStacks = (state) => {
 }
 
 const GetLastEpic = (state,currentEpic,d) =>{
-    var workedEpics = state.data.filter(e=>e.Developers.some(x=>x.FullName === d.FullName && x.RemainingWork > 0) && e.EpicKey !== currentEpic.EpicKey && (new Date(e.DueDate)) < (new Date(currentEpic.DueDate)));
+    var workedEpics = state.data.filter(e=>e.Developers && e.Developers.some(x=>x.FullName === d.FullName && x.RemainingWork > 0) && e.EpicKey !== currentEpic.EpicKey && (new Date(e.DueDate)) < (new Date(currentEpic.DueDate)));
     var lastWorkedEpic = null;
     if(workedEpics.length > 0) {
         lastWorkedEpic = workedEpics.sort((a, b) => StringToDate(b.DueDate) - StringToDate(a.DueDate))[0];
         console.log([lastWorkedEpic.DevStack.find(x=>x.FullName === d.FullName)].map((x)=>{return {...x}}));
     }
     console.log([currentEpic].map((x)=>{return {...x}}));
+    console.log([currentEpic.Developers].map((x)=>{return {...x}}));
     console.log(d.FullName);
     console.log([workedEpics].map((x)=>{return {...x}}));
     console.log([lastWorkedEpic].map((x)=>{return {...x}}));

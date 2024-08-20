@@ -16,8 +16,8 @@ export const HandleEpicThunks = async (dispatch, type = 'FullRefresh',epics) => 
       await HandleEpics(dispatch, selected, issueList);
       await HandleDevs(dispatch, issueList);
       await dispatch(reOrderEpics());
-      const resp = await dispatch(setEpicDevStack());
-      console.log(resp.payload);
+      const resp1 = await dispatch(setEpicDevStack());
+      console.log(resp1.payload);
       break;
     case 'EpicRefresh':
       await dispatch(fetchAvailableEpics());
@@ -25,9 +25,8 @@ export const HandleEpicThunks = async (dispatch, type = 'FullRefresh',epics) => 
       //console.log(selected.payload);
       await HandleEpics(dispatch, selected, issueList);
       await dispatch(reOrderEpics());
-      // dispatch(setEpicDevStack()).unwrap().then((returneddata)=>{
-      //   console.log(epics);
-      // });
+      const resp2 = await dispatch(setEpicDevStack());
+      console.log(resp2.payload);
       
       break;
     default:
@@ -99,11 +98,11 @@ const FillIssueData = async ({ item, index }) => {
   } else {
     customFields = storageData;
   }
-  
+
   var issueData = {
     idx: index,
     EpicKey: item.fields.parent.key,
-    dev: customFields.Developer != null ? customFields.Developer.FullName : "",
+    dev: customFields.Developer != null ? {FullName:customFields.Developer.FullName,AccountID:customFields.Developer.AccountID} : "",
     ticketNumber: item.key,
     remainingTime: item.fields?.timeestimate ? (item.fields?.timeestimate + (customFields.Overflow ? (customFields.Overflow.reduce((total, item) => total + (item['TimeSpent'] || 0), 0)) : 0)) : 0,
     timespent: item.fields?.timespent,
@@ -120,6 +119,7 @@ export const RefreshDevelopersList = async (devs) => {
   var devsList = devs.map((dev) => ({
     FullName: dev.FullName,
     ShortName: dev.ShortName,
+    AccountID:dev.AccountID,
     AvailableHours: 0,
     Meetings: 0,
     DevHours: 0
@@ -140,7 +140,13 @@ export const RefreshDevelopersList = async (devs) => {
     else {
       devsList = returnedData;
     }
-    //console.log(devsList);
+    for (let index = 0; index < devsList.length; index++) {
+      var dev = devsList[index];
+      var resp = await requestJira(`/rest/api/3/user?accountId=${dev.AccountID}`);
+      var Developer = await resp.json();
+      dev.AvatarUrl = Developer.avatarUrls['16x16']
+    }
+    
     return devsList;
   }
 }

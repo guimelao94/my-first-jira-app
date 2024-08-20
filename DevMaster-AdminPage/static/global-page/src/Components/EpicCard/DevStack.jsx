@@ -15,37 +15,14 @@ export const DevStack = ({ epicKey }) => {
     useEffect(()=>{
         console.log(epics);
     },[]);
-    const [devs, setDevStackData] = useState([
-        {
-            FullName: 'Guimel O Gonzalez',
-            TotalHours: 20.5,
-            DaysWorth: 12,
-            DaysAvailable: 9,
-            StartDate: '7/25/2024',
-            OnTrack: 'On Track',
-            DoneBy: '7/25/2024',
-            OverflowHours: 7.5,
-            EpicKey: 'DMA-2'
-        },
-        {
-            FullName: 'Julius Cesar',
-            TotalHours: 21,
-            DaysWorth: 11,
-            DaysAvailable: 7,
-            StartDate: '7/24/2024',
-            OnTrack: 'Off Track',
-            DoneBy: '7/27/2024',
-            OverflowHours: 2.5,
-            EpicKey: 'DMA-2'
-        }
-    ]);
+
     if(!epics.AllDevStacksLoaded) return;
 
     return (
         <TableTree label="Automatically controlled row expansion">
             <Headers>
                 <Header className={Style.HeaderCell} width={145}>Totals</Header>
-                {Epic.DevStack.map((developer) => (
+                {Epic.DevStack && Epic.DevStack.map((developer) => (
                     <Header width={145} className={Style.HeaderCell}>
                         {developer.TotalHours}H
                     </Header>
@@ -67,7 +44,7 @@ export const DevStack = ({ epicKey }) => {
                         isDefaultExpanded
                     >
                         <Cell className={Style.BodyLabel} width={145}>{Label}</Cell>
-                        {Epic.DevStack.map((developer) => (
+                        {Epic.DevStack && Epic.DevStack.map((developer) => (
                             <Cell width={145} className={Style.BodyCell}>
                                 <Inline>
                                     <span style={{}}>{developer[Property]}</span>

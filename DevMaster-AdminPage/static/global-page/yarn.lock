@@ -106,6 +106,23 @@
     chromatism "^2.6.0"
     lodash "^4.17.21"
 
+"@atlaskit/avatar@^21.15.0":
+  version "21.15.0"
+  resolved "https://registry.yarnpkg.com/@atlaskit/avatar/-/avatar-21.15.0.tgz#bbd4834d1ea1645cbcc8d57314bdbb95daac5b22"
+  integrity sha512-wt8AFUzUXIFyLAEZGpZ5oul6K5kNLm+xLSI8N/p1UTgQjE+wptmmbZuS8bnQAr1Wj03U5zIJ6dXDoLLtKUwVww==
+  dependencies:
+    "@atlaskit/analytics-next" "^10.1.0"
+    "@atlaskit/focus-ring" "^1.6.0"
+    "@atlaskit/icon" "^22.12.0"
+    "@atlaskit/platform-feature-flags" "^0.3.0"
+    "@atlaskit/primitives" "^12.0.0"
+    "@atlaskit/theme" "^13.0.0"
+    "@atlaskit/tokens" "^1.58.0"
+    "@babel/runtime" "^7.0.0"
+    "@emotion/react" "^11.7.1"
+    "@emotion/serialize" "^1.1.0"
+    react-uid "^2.2.0"
+
 "@atlaskit/blanket@^13.3.0":
   version "13.3.1"
   resolved "https://registry.yarnpkg.com/@atlaskit/blanket/-/blanket-13.3.1.tgz#fff653bdaf37c7a21ee51a5cb81552b79471cdfe"
@@ -354,7 +371,7 @@
     "@babel/runtime" "^7.0.0"
     "@emotion/react" "^11.7.1"
 
-"@atlaskit/icon@^22.13.0":
+"@atlaskit/icon@^22.12.0", "@atlaskit/icon@^22.13.0":
   version "22.13.0"
   resolved "https://registry.yarnpkg.com/@atlaskit/icon/-/icon-22.13.0.tgz#3435f6a3c2da07437e0275a8912ac81221692b51"
   integrity sha512-8cDiZJ5IQxlzA08d7c1yoY1H38heKpLHkDkpsGBROT6qc1OwczV2HlwXdBkdacFqVCcSSnUD3+MllhKZD7Ev0Q==

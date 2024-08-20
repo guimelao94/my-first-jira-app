@@ -60,3 +60,9 @@ permissions:
   content:
     styles:
       - 'unsafe-inline'
+  external:
+    images:
+      - '*.gravatar.com'
+      - '*.wp.com'
+      - '*.atl-paas.net'
+      - '*.atlassian.com'

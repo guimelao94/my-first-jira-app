@@ -68,8 +68,9 @@ export const ViewOverflowModal = ({ IssueKey, closeModal, isOpen }) => {
 // applied as rows in the form
 const GenerateRows = (data,removeRecord) => {
     console.log(data);
+    if(!data)return null;
     var rows = data.map((r, index) => ({
-        key: `row-${index}-${r.Developer.replace(' ','-')}`,
+        key: `row-${index}-${r.Developer.FullName.replace(' ','-')}`,
         cells: [
             {
                 key: r.Description,
@@ -84,8 +85,8 @@ const GenerateRows = (data,removeRecord) => {
                 content: r.TimeStamp,
             },
             {
-                key: r.Developer,
-                content: r.Developer,
+                key: r.Developer.FullName,
+                content: r.Developer.FullName,
             },
             {
                 key: '',
