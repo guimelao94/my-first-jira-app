@@ -4,6 +4,7 @@ import { invoke, requestJira, view } from '@forge/bridge';
 import { Modal, ModalBody, ModalTransition, ModalTitle, ModalFooter, ModalHeader, Button, TextArea, Inline, Textfield, User, UserPicker, Text, xcss, Box } from '@forge/react';
 import { AddOverflowModal } from './AddOverflowModal';
 import { ViewOverflowModal } from './ViewOverflowModal';
+import { Checkbox } from '@forge/react';
 
 const App = () => {
     const [isAddOverflowOpen, setIsAddOverflowOpen] = useState(false);
@@ -11,6 +12,7 @@ const App = () => {
     const [timeSpent, setTimeSpent] = useState("");
     const [description, setDescription] = useState("");
     const [developer, setDeveloper] = useState(null);
+    const [isCompleted, setIsCompleted] = useState(false);
     const openAddOverflowModal = () => setIsAddOverflowOpen(true);
     const openViewOverflowModal = () => setIsViewOverflowOpen(true);
 
@@ -41,6 +43,17 @@ const App = () => {
         invoke('Storage.SaveData', { key: context.extension.issue.key, value: storageData }).then((returnedData) => {
             console.log(returnedData);
         });
+
+    }
+
+    const updateIsCompleted = async (event) => {
+
+        setIsCompleted(event.target.checked);
+        var storageData = await invoke('Storage.GetData', { key: context.extension.issue.key });
+
+        storageData.isCompleted = event.target.checked;
+
+        invoke('Storage.SaveData', { key: context.extension.issue.key, value: storageData });
 
     }
     const closeViewOverflowModal = () =>{
@@ -106,8 +119,14 @@ const App = () => {
                     if (returneddata.Developer) {
                         setDeveloper(returneddata.Developer);
                     }
+                    if (returneddata.isCompleted) {
+                        setIsCompleted(returneddata.isCompleted);
+                    }else{
+                        setIsCompleted(false);
+                    }
                 } else {
                     setDeveloper(null);
+                    setIsCompleted(false);
                 }
             });
             console.log(data);
@@ -132,6 +151,9 @@ const App = () => {
                     defaultValue={GetDeveloperID()}
                     onChange={updateDeveloper}
                 />
+            </Box>
+            <Box xcss={xcss({ marginBottom: 'space.200' })}>
+                <Checkbox value="checked" label="Completed" onChange={updateIsCompleted}  isChecked={isCompleted} />
             </Box>
             <Inline>
                 <Box xcss={xcss({ marginLeft: 'space.200', float:'left' })}>

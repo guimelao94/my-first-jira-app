@@ -51,7 +51,7 @@ export const HandleEpics = async (dispatch, selected, issueList) => {
   for (let index = 0; index < selected.payload.length; index++) {
     const element = selected.payload[index];
     var epic = await dispatch(ProcessEpic(element));
-    //console.log(epic);
+    console.log(epic);
     if (epic.payload) {
       for (let idx = 0; idx < epic.payload.Issues.length; idx++) {
         const issue = epic.payload.Issues[idx];
@@ -70,12 +70,13 @@ export const HandleEpics = async (dispatch, selected, issueList) => {
 
 const FillIssueData = async ({ item, index }) => {
   var customFields = {
-    Overflow: []
+    Overflow: [],
+    isCompleted:null
   }
 
   var workLogs = [];
 
-  //console.log(item);
+  console.log(item);
   //console.log(index);
   const jql = await requestJira(`/rest/api/3/issue/${item.key}/worklog`);
   const returnedData = await jql.json();
@@ -108,6 +109,9 @@ const FillIssueData = async ({ item, index }) => {
     EpicKey: item.fields.parent.key,
     dev: customFields.Developer != null ? {FullName:customFields.Developer.FullName,AccountID:customFields.Developer.AccountID} : "",
     ticketNumber: item.key,
+    assignee:{FullName:item.fields?.assignee?.displayName,AvatarUrl:item.fields?.assignee?.avatarUrls["16x16"]},
+    isCompleted:customFields.isCompleted,
+    status:item.fields?.status?.name,
     remainingTime: item.fields?.timeestimate ? (item.fields?.timeestimate + (customFields.Overflow ? (customFields.Overflow.reduce((total, item) => total + (item['TimeSpent'] || 0), 0)) : 0)) : 0,
     timespent: item.fields?.timespent,
     originalestimate: item.fields?.timeoriginalestimate,

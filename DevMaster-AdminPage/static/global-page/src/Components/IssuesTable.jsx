@@ -1,10 +1,12 @@
 import TableTree, { Cell, Header, Headers, Row, Rows } from '@atlaskit/table-tree';
 import { convertToHours } from '../Utils/ConversionTools';
 import { Box, Inline, Stack, xcss } from '@atlaskit/primitives';
-import  './IssuesTable.css';
+import './IssuesTable.css';
 import Lozenge from '@atlaskit/lozenge';
 import { useSelector } from 'react-redux';
 import { useEffect } from 'react';
+import Avatar, { AvatarItem } from '@atlaskit/avatar';
+import CheckIcon from '@atlaskit/icon/glyph/check'
 
 export const IssuesTable = ({ developers, issues, EpicKey }) => {
     console.log(developers);
@@ -28,16 +30,16 @@ export const IssuesTable = ({ developers, issues, EpicKey }) => {
         console.log(issues.filter(z => z.ticketNumber == 'DMA-5')[0].worklogs.find(x => x.Developer == 'Julius Cesar'));
     }
 
-    useEffect(()=>{
+    useEffect(() => {
         console.log(currentEpic);
-    },[epics.AllDevStacksLoaded])
+    }, [epics.AllDevStacksLoaded])
 
     return (
         <TableTree label="Automatically controlled row expansion">
             <Headers>
-                <Header width={145}>Ticket #</Header>
+                <Header width={160}>Ticket #</Header>
                 {developers.map((developer) => (
-                    <Header width={145} className={currentEpic.DevStack && currentEpic.DevStack.some(d=>d.FullName == developer.FullName && d.OnTrack == "Off Track")?"DevOffTrack":""}>
+                    <Header width={145} className={currentEpic.DevStack && currentEpic.DevStack.some(d => d.FullName == developer.FullName && d.OnTrack == "Off Track") ? "DevOffTrack" : ""}>
                         {developer.ShortName}
                         <span style={{ marginLeft: '.3em' }}><Lozenge appearance="new">{convertToHours(developer.RemainingWork)}</Lozenge></span>
                     </Header>
@@ -45,20 +47,34 @@ export const IssuesTable = ({ developers, issues, EpicKey }) => {
             </Headers>
             <Rows
                 items={issues}
-                render={({ ticketNumber, dev, remainingTime, overflowTime, worklogs, idx }) => (
+                render={({ ticketNumber, dev, remainingTime, overflowTime, worklogs, idx, assignee, status, isCompleted }) => (
                     <Row
                         items={[]}
                         hasChildren={false}
                         isDefaultExpanded
                     >
-                        <Cell singleLine>{ticketNumber}</Cell>
+                        <Cell>
+                            <Inline>
+                                <AvatarItem
+                                    avatar={<Avatar name={assignee.FullName} src={assignee.AvatarUrl} size='small' />}
+                                    primaryText={ticketNumber}
+                                />
+                                {isCompleted &&
+                                    <Box xcss={xcss({ color: 'color.text.success' })}>
+                                        <CheckIcon label="" size="large" />
+                                    </Box>
+                                }
+                            </Inline>
+
+                            <Lozenge appearance="success" isBold>{status}</Lozenge>
+                        </Cell>
                         {developers.map((developer) => (
-                            <Cell className={currentEpic.DevStack && currentEpic.DevStack.some(d=>d.FullName == developer.FullName && d.OnTrack == "Off Track")?"DevOffTrack":""}>
-                                    <Inline>
-                                        {developer.FullName == dev.FullName && <span style={{ paddingRight: '5px' }}><Lozenge appearance="new">{convertToHours(developer.FullName == dev.FullName ? remainingTime : 0)}</Lozenge></span>}
-                                        {worklogs.some(x => x.Developer == developer.FullName) && <span style={{ paddingRight: '5px' }}><Lozenge style={{ paddingRight: '.5em' }}>{convertToHours(worklogs.length > 0 ? worklogs.find(x => x.Developer == developer.FullName)?.TimeSpent : 0)}</Lozenge></span>}
-                                        {((overflowTime && overflowTime.length > 0 && overflowTime.some(x => x.Developer.FullName == developer.FullName))) && <span><Lozenge appearance="inprogress">{convertToHours(overflowTime && overflowTime.length > 0 && overflowTime.some(x => x.Developer.FullName == developer.FullName) ? sumOverflowHours(overflowTime, developer.FullName) : 0)}</Lozenge></span>}
-                                    </Inline>
+                            <Cell className={currentEpic.DevStack && currentEpic.DevStack.some(d => d.FullName == developer.FullName && d.OnTrack == "Off Track") ? "DevOffTrack" : ""}>
+                                <Inline>
+                                    {developer.FullName == dev.FullName && <span style={{ paddingRight: '5px' }}><Lozenge appearance="new">{convertToHours(developer.FullName == dev.FullName ? remainingTime : 0)}</Lozenge></span>}
+                                    {worklogs.some(x => x.Developer == developer.FullName) && <span style={{ paddingRight: '5px' }}><Lozenge style={{ paddingRight: '.5em' }}>{convertToHours(worklogs.length > 0 ? worklogs.find(x => x.Developer == developer.FullName)?.TimeSpent : 0)}</Lozenge></span>}
+                                    {((overflowTime && overflowTime.length > 0 && overflowTime.some(x => x.Developer.FullName == developer.FullName))) && <span><Lozenge appearance="inprogress">{convertToHours(overflowTime && overflowTime.length > 0 && overflowTime.some(x => x.Developer.FullName == developer.FullName) ? sumOverflowHours(overflowTime, developer.FullName) : 0)}</Lozenge></span>}
+                                </Inline>
                             </Cell>
 
                         ))

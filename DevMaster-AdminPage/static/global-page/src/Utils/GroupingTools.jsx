@@ -23,7 +23,7 @@ export const groupByDevs = (array, property) => {
             FullName: value.FullName, 
             ShortName: shortName,
             AccountID:value.AccountID,
-            RemainingWork:array.filter(x=>x[property].FullName == value.FullName).reduce((total, item) => total + (item['remainingTime'] || 0), 0),
+            RemainingWork:array.filter(x=>x[property].FullName == value.FullName && !x.isCompleted).reduce((total, item) => total + (item['remainingTime'] || 0), 0),
             TimeSpent:array.filter(x=>x[property].FullName == value.FullName).reduce((total, item) => total + (item['timespent'] || 0), 0),
             OriginalEstimate:array.filter(x=>x[property].FullName == value.FullName).reduce((total, item) => total + (item['originalestimate'] || 0), 0),
             OverflowTime:array.filter(x=>x.overflowTime && x.overflowTime.some(y=> y.Developer.FullName == value.FullName)).reduce((total, item) => total + SumOverflow(item,value.FullName), 0)

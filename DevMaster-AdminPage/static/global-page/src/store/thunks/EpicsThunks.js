@@ -67,7 +67,8 @@ export const ProcessEpic = createAsyncThunk('epics/Process',async (epicKey)=>{
             EpicKey: epicKey,
             DueDate: data.fields.duedate,
             IssueType: data.fields.issuetype.name,
-            Issues:returnedData.issues
+            Issues:returnedData.issues,
+            Summary:data.fields.summary
         };
         console.log(EpicObj)
         return EpicObj;

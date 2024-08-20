@@ -3,7 +3,7 @@ import { media } from '@atlaskit/primitives/responsive';
 
 import { useState, useEffect, memo, useCallback, useContext } from 'react';
 import TableTree, { Cell, Header, Headers, Row, Rows } from '@atlaskit/table-tree';
-import { TopCard_Row } from '../TopCard_Misc';
+import { EpicStack_Top, TopCard_Row } from '../TopCard_Misc';
 import { IssuesTable } from '../IssuesTable';
 import Lozenge from '@atlaskit/lozenge';
 import Spinner from '@atlaskit/spinner';
@@ -18,6 +18,8 @@ export const EpicCard = ({ epicKey, style}) => {
 		return state.epics;
 	})
     const [viewDevStack, setViewDevStack] = useState(false);
+
+    const [currentEpic,setCurrentEpic] = useState(null);
 
     const cardStyles = xcss({
         padding: 'space.050',
@@ -41,25 +43,37 @@ export const EpicCard = ({ epicKey, style}) => {
     console.log(epics.data.find(x=>x.EpicKey == epicKey));
     useEffect(() => {
         console.log('Pull Data');
-        //HandleEpics(epicKey, setCardData, setStorage, storage)
         
     }, []);
 
-    if (!(epics.loaded) || !epics.data.some(x=>x.EpicKey == epicKey) || !(epics.data.find(x=>x.EpicKey == epicKey).loaded)) {
+    useEffect(() => {
+        console.log('Pull Data');
+        //HandleEpics(epicKey, setCardData, setStorage, storage)
+        setCurrentEpic(epics.data.find(x=>x.EpicKey == epicKey));
+        console.log(currentEpic);
+    }, [epics.AllIssuesLoaded && epics.AllDevStacksLoaded]);
+
+    if (!(epics.loaded) || !currentEpic || !(currentEpic.loaded)) {
         return (<Spinner size={'xlarge'} />)
     }
 
     return (
         <Box xcss={cardStyles} style={style}>
-            <Toggle
-                id="toggle-controlled"
-                onChange={() => setViewDevStack((prev) => !prev)}
-                isChecked={viewDevStack}
-            />
+            <Inline space="space.200">
+                <Toggle
+                    id="toggle-controlled"
+                    onChange={() => setViewDevStack((prev) => !prev)}
+                    isChecked={viewDevStack}
+                />
+                <EpicStack_Top Epic={epicKey} DueDate={currentEpic.DueDate} Title={currentEpic.Summary}/>
+            </Inline>
+            <Box xcss={xcss({backgroundColor:"#fafbfc",padding:".2em", width:"max-content",fontSize:"1.1em",marginBottom:"1.2em",marginLeft:"auto",marginRight:"auto"})}>
+                <span style={{"textAlign":"center"}}>{currentEpic.Summary}</span>
+            </Box>
             <Stack>
-                {(viewDevStack && epics.data.some(x=>x.EpicKey == epicKey)) ? <DevStack epicKey={epicKey}/> : <EpicStack cardData={epics.data.find(x=>x.EpicKey == epicKey)} />}
+                {(viewDevStack && currentEpic) ? <DevStack epicKey={epicKey}/> : <EpicStack cardData={currentEpic} />}
                 {
-                    epics.issues.some(x=>x.EpicKey == epicKey) && epics.data.find(x=>x.EpicKey == epicKey).IssueType == 'Epic' && epics.AllIssuesLoaded && epics.AllDevStacksLoaded && <IssuesTable developers={epics.data.find(x=>x.EpicKey == epicKey).Developers} EpicKey={epicKey} issues={epics.issues.filter(x=>x.EpicKey == epicKey)} />
+                    currentEpic && currentEpic.IssueType == 'Epic' && epics.AllIssuesLoaded && epics.AllDevStacksLoaded && <IssuesTable developers={currentEpic.Developers} EpicKey={epicKey} issues={epics.issues.filter(x=>x.EpicKey == epicKey)} />
                 }
             </Stack>
         </Box>
