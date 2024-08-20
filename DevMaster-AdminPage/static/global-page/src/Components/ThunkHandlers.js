@@ -1,16 +1,20 @@
 import { useDispatch } from "react-redux";
-import { fetchAvailableEpics, fetchSelectedEpics, ProcessEpic } from "../store";
-import { reOrderEpics, setDevelopers, setEpicDevelopers, setEpicDevStack, setIssueData } from '../store/slices/epicSlice';
+import { fetchAvailableEpics, fetchHolidays, fetchSelectedEpics, ProcessEpic } from "../store";
+import { reOrderEpics, setDevelopers, setEpicDevelopers, setEpicDevStack, setHolidays, setIssueData } from '../store/slices/epicSlice';
 import { groupByDevs } from "../Utils/GroupingTools";
 import { invoke, requestJira } from "@forge/bridge";
 
 export const HandleEpicThunks = async (dispatch, type = 'FullRefresh',epics) => {
   var issueList = [];
   let selected = null;
+  let holidays = null;
   console.log(type);
   switch (type) {
     case 'FullRefresh':
       await dispatch(fetchAvailableEpics());
+      holidays = await dispatch(fetchHolidays());
+      console.log(holidays);
+      await dispatch(setHolidays(holidays.payload));
       selected= await dispatch(fetchSelectedEpics());
       //console.log(selected.payload);
       await HandleEpics(dispatch, selected, issueList);
@@ -140,7 +144,7 @@ export const RefreshDevelopersList = async (devs) => {
     else {
       devsList = returnedData;
     }
-    for (let index = 0; index < devsList.length; index++) {
+    for (let index = 0; index < devsList.filter(x=>!x.AvatarUrl)?.length; index++) {
       var dev = devsList[index];
       var resp = await requestJira(`/rest/api/3/user?accountId=${dev.AccountID}`);
       var Developer = await resp.json();

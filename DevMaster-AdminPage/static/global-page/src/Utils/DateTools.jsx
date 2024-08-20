@@ -9,15 +9,16 @@ export const isWeekend = (date) => {
   return result;
 }
 
-export const addWeekdays = (startDate, daysToAdd) => {
+export const addWeekdays = (startDate, daysToAdd, Holidays,d,state) => {
   let date = new Date(startDate);
   let addedDays = 0;
+  var fullDev = state.Developers.find(z => z.FullName === d.FullName);
 
   while (addedDays < daysToAdd) {
     console.log(daysToAdd);
     date.setDate(date.getDate() + 1);
 
-    if (!isWeekend(date)) {
+    if (!isWeekend(date) && !Holidays.includes(date.toISOString().substring(0, 10)) && !(Object.keys(fullDev.TimeOff).length > 0 && fullDev.TimeOff.includes(date.toISOString().substring(0, 10)))) {
       addedDays++;
     }
   }
@@ -25,8 +26,14 @@ export const addWeekdays = (startDate, daysToAdd) => {
   return date.toLocaleDateString();
 };
 
-export const nextWeekday = (date) => {
+export const nextWeekday = (date,Holidays,d,state) => {
   const nextDate = new Date(date); // Create a new Date object to avoid mutating the original date
+  var fullDev = state.Developers.find(z => z.FullName === d.FullName);
+
+  while (Holidays.includes(nextDate.toISOString().substring(0, 10)) || (Object.keys(fullDev.TimeOff).length > 0 && fullDev.TimeOff.includes(nextDate.toISOString().substring(0, 10)))) {
+    nextDate.setDate(nextDate.getDate() + 1);
+  }
+
   const dayOfWeek = nextDate.getDay(); // Get the day of the week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
 
   // If the day is Saturday (6), move to Monday (2 days ahead)

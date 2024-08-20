@@ -4,12 +4,13 @@ import { addWeekdays, getDifferenceInDays, isWeekend, nextWeekday } from "../../
 
 export const HandleDevStacks = (state) => {
     var today = new Date();
+    if(!state.data) return;
     for (let index = 0; index < state.data.length; index++) {
         var currentEpic = state.data[index];
         var prevEpic = index === 0 ? null : state.data[index - 1];
 
         var developers = currentEpic.Developers.map((d) => {
-            
+
             return {
                 FullName: d.FullName,
                 TotalHours: d.RemainingWork ? (d.RemainingWork / 3600) + (d.OverflowHours ? d.OverflowHours : 0) : 0,
@@ -17,32 +18,32 @@ export const HandleDevStacks = (state) => {
                 EpicKey: currentEpic.EpicKey
             };
         });
-    
+
         console.log(developers);
-    
+
         developers = developers.map((d) => ({
             ...d,
             DaysWorth: (d.TotalHours && state.Developers.find(z => z.FullName === d.FullName).DevHours > 0) ? Math.ceil(d.TotalHours / (state.Developers.find(z => z.FullName === d.FullName).DevHours / 5)) : 0,
         }));
-    
+
         developers = developers.map((d) => {
-            var lastWorkedEpic = GetLastEpic(state,currentEpic,d);
+            var lastWorkedEpic = GetLastEpic(state, currentEpic, d);
 
             return {
                 ...d,
-                StartDate: index === 0 || !lastWorkedEpic ? nextWeekday(today).toLocaleDateString() : addWeekdays(lastWorkedEpic.DevStack.find(x=>x.FullName === d.FullName).DoneBy, 1),
+                StartDate: CalculateStartDate(index, lastWorkedEpic, today, d, state),
             }
         });
 
         developers = developers.map((d) => {
-            var lastWorkedEpic = GetLastEpic(state,currentEpic,d);
-            return{
+            var lastWorkedEpic = GetLastEpic(state, currentEpic, d);
+            return {
                 ...d,
                 DaysAvailable: getDifferenceInDays(d.StartDate, currentEpic.DueDate),
-                DoneBy: addWeekdays(d.StartDate, d.DaysWorth)
+                DoneBy: addWeekdays(d.StartDate, d.DaysWorth,state.Holidays,d,state)
             };
         });
-    
+
         developers = developers.map((d) => {
             console.log(d.DoneBy);
             console.log(StringToDate((d.DoneBy)));
@@ -50,31 +51,40 @@ export const HandleDevStacks = (state) => {
             console.log(StringToDate((currentEpic.DueDate)));
             return {
                 ...d,
-                OnTrack: StringToDate(d.DoneBy) <= StringToDate(currentEpic.DueDate) ? 'On Track' : 'Off Track',
+                OnTrack: StringToDate(d.DoneBy) <= StringToDate(currentEpic.DueDate) || d.DaysWorth === 0 ? 'On Track' : 'Off Track',
             };
         });
 
         currentEpic.DevStack = developers;
         state.AllDevStacksLoaded = true;
         console.log(developers);
-      }
+    }
 }
 
-const GetLastEpic = (state,currentEpic,d) =>{
-    var workedEpics = state.data.filter(e=>e.Developers && e.Developers.some(x=>x.FullName === d.FullName && x.RemainingWork > 0) && e.EpicKey !== currentEpic.EpicKey && (new Date(e.DueDate)) < (new Date(currentEpic.DueDate)));
-    var lastWorkedEpic = null;
-    if(workedEpics.length > 0) {
-        lastWorkedEpic = workedEpics.sort((a, b) => StringToDate(b.DueDate) - StringToDate(a.DueDate))[0];
-        console.log([lastWorkedEpic.DevStack.find(x=>x.FullName === d.FullName)].map((x)=>{return {...x}}));
+const CalculateStartDate = (index, lastWorkedEpic, today, d, state) => {
+    if (index === 0 || !lastWorkedEpic) {
+        return nextWeekday(today,state.Holidays,d,state).toLocaleDateString();
     }
-    console.log([currentEpic].map((x)=>{return {...x}}));
-    console.log([currentEpic.Developers].map((x)=>{return {...x}}));
+    else {
+        return addWeekdays(lastWorkedEpic.DevStack.find(x => x.FullName === d.FullName).DoneBy, 1,state.Holidays,d,state);
+    }
+}
+
+const GetLastEpic = (state, currentEpic, d) => {
+    var workedEpics = state.data.filter(e => e.Developers && e.Developers.some(x => x.FullName === d.FullName && x.RemainingWork > 0) && e.EpicKey !== currentEpic.EpicKey && (new Date(e.DueDate)) < (new Date(currentEpic.DueDate)));
+    var lastWorkedEpic = null;
+    if (workedEpics.length > 0) {
+        lastWorkedEpic = workedEpics.sort((a, b) => StringToDate(b.DueDate) - StringToDate(a.DueDate))[0];
+        console.log([lastWorkedEpic.DevStack.find(x => x.FullName === d.FullName)].map((x) => { return { ...x } }));
+    }
+    console.log([currentEpic].map((x) => { return { ...x } }));
+    console.log([currentEpic.Developers].map((x) => { return { ...x } }));
     console.log(d.FullName);
-    console.log([workedEpics].map((x)=>{return {...x}}));
-    console.log([lastWorkedEpic].map((x)=>{return {...x}}));
+    console.log([workedEpics].map((x) => { return { ...x } }));
+    console.log([lastWorkedEpic].map((x) => { return { ...x } }));
 
-    
 
-    
+
+
     return lastWorkedEpic;
 }

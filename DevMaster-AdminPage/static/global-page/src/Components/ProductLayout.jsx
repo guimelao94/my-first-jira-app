@@ -34,6 +34,7 @@ import Spinner from '@atlaskit/spinner';
 import BasicGrid from './BasicGrid';
 import { EpicCard } from './EpicCard/EpicCard';
 import { TimeOffTable } from './TimeOffTable';
+import { HolidaysTable } from './HolidaysTable';
 
 export const ProductLayout = ({ children }) => {
 	const [isLoading, setIsLoading] = useState(false);
@@ -136,9 +137,10 @@ function TopNavigationContents() {
 }
 
 const SideNavigationContent = ({ }) => {
-	const { Developers } = useSelector((state) => {
+	const { Developers,Holidays } = useSelector((state) => {
 		return state.epics;
 	})
+	console.log(Holidays);
 	return (
 		<SideNavigation label="Project navigation" testId="side-navigation">
 			<NavigationHeader>
@@ -153,6 +155,13 @@ const SideNavigationContent = ({ }) => {
 			</NavigationHeader>
 			<Box>
 				{(Developers && Developers.length > 0) ? <TimeOffTable /> : <Spinner size={'large'} />}
+			</Box>
+
+			<NavigationHeader>
+				<Header description="Holidays">Holidays</Header>
+			</NavigationHeader>
+			<Box>
+				{(Developers && Developers.length > 0) ? <HolidaysTable /> : <Spinner size={'large'} />}
 			</Box>
 		</SideNavigation>
 	);

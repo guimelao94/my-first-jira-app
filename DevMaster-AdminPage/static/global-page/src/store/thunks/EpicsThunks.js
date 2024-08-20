@@ -30,6 +30,19 @@ export const fetchSelectedEpics = createAsyncThunk('epics/fetchSelected',async (
     
 });
 
+export const fetchHolidays = createAsyncThunk('epics/fetchHolidays',async ()=>{
+    console.log('fetchHolidays');
+    try {
+        const res = await invoke('Storage.GetData', { key: 'Holidays' });
+        console.log(res);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+    
+    
+});
+
 export const SaveSelectedEpics = createAsyncThunk('epics/SaveSelected',async (newArray)=>{    
     invoke('Storage.SaveData', { key: 'Cards', value: newArray }).then((returnedData) => {
         console.log(returnedData);

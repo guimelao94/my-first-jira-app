@@ -19,7 +19,8 @@ const epicsSlice = createSlice({
     AllIssuesLoaded: false,
     error: null,
     reloadCounter: 0,
-    AllDevStacksLoaded:false
+    AllDevStacksLoaded:false,
+    Holidays:null
   },
   reducers: {
     setDevelopers(state, action) {
@@ -33,7 +34,12 @@ const epicsSlice = createSlice({
 
     },
     reOrderEpics(state, action) {
-      state.data.sort((a, b) => new Date(a.DueDate) - new Date(b.DueDate));
+      if(state.data){
+        state.data.sort((a, b) => new Date(a.DueDate) - new Date(b.DueDate));
+      }
+    },
+    setHolidays(state, action) {
+      state.Holidays = action.payload;
     },
     setEpicDevStack(state,action){
         HandleDevStacks(state);
@@ -167,5 +173,5 @@ const epicsSlice = createSlice({
 
   }
 });
-export const { setDevelopers, setEpicDevelopers, setIssueData, setDevHours, reOrderEpics,setEpicDevStack } = epicsSlice.actions;
+export const { setDevelopers, setEpicDevelopers, setIssueData, setDevHours, reOrderEpics,setEpicDevStack,setHolidays } = epicsSlice.actions;
 export const epicsReducer = epicsSlice.reducer;
