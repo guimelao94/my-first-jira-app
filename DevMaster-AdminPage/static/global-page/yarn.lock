@@ -2233,6 +2233,11 @@
   dependencies:
     "@types/history" "^4.7.11"
 
+"@forge/jira-bridge@^0.32.0":
+  version "0.32.0"
+  resolved "https://registry.yarnpkg.com/@forge/jira-bridge/-/jira-bridge-0.32.0.tgz#ad696f7a02d70dc6788f8fa990cf1fb1736b44d1"
+  integrity sha512-kHslpcGE7oDFnFryKe8k8aaDi62pVMpkr8/dODe0xMOy/bwPDdi5H+UH2Wi+61TnF2We8qDirUHK4McI/BBQlQ==
+
 "@humanwhocodes/config-array@^0.11.10":
   version "0.11.10"
   resolved "https://registry.npmjs.org/@humanwhocodes/config-array/-/config-array-0.11.10.tgz"

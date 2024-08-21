@@ -5,7 +5,7 @@ export const convertToHours = (seconds) => {
         return "0h";
     }
     var hours = seconds / 3600
-    return `${hours}h`;
+    return `${hours.toFixed(2)}h`;
 }
 export const convertToCustom = (seconds) => {
     //console.log(seconds);

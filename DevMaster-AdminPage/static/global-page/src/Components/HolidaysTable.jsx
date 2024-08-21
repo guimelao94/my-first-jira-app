@@ -35,7 +35,9 @@ export const HolidaysTable = memo(function HolidaysTable() {
     console.log(holidays);
     useEffect(() => {
         console.log(holidays);
-        setHolidays([...Holidays].sort((a, b) => StringToDate(a) - StringToDate(b)));
+        if(Object.keys(Holidays).length > 0){
+            setHolidays([...Holidays].sort((a, b) => StringToDate(a) - StringToDate(b)));
+        }
     }, []);
 
     return (

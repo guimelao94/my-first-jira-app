@@ -18,7 +18,7 @@ export const addWeekdays = (startDate, daysToAdd, Holidays,d,state) => {
     console.log(daysToAdd);
     date.setDate(date.getDate() + 1);
 
-    if (!isWeekend(date) && !Holidays.includes(date.toISOString().substring(0, 10)) && !(Object.keys(fullDev.TimeOff).length > 0 && fullDev.TimeOff.includes(date.toISOString().substring(0, 10)))) {
+    if (!isWeekend(date) && (Object.keys(Holidays).length === 0 || !Holidays.includes(date.toISOString().substring(0, 10))) && !(fullDev && fullDev.TimeOff && Object.keys(fullDev.TimeOff).length > 0 && fullDev.TimeOff.includes(date.toISOString().substring(0, 10)))) {
       addedDays++;
     }
   }
@@ -30,7 +30,7 @@ export const nextWeekday = (date,Holidays,d,state) => {
   const nextDate = new Date(date); // Create a new Date object to avoid mutating the original date
   var fullDev = state.Developers.find(z => z.FullName === d.FullName);
 
-  while (Holidays.includes(nextDate.toISOString().substring(0, 10)) || (Object.keys(fullDev.TimeOff).length > 0 && fullDev.TimeOff.includes(nextDate.toISOString().substring(0, 10)))) {
+  while ((Holidays && Object.keys(Holidays).length > 0 && Holidays.includes(nextDate.toISOString().substring(0, 10))) || (fullDev && fullDev.TimeOff && Object.keys(fullDev.TimeOff).length > 0 && fullDev.TimeOff.includes(nextDate.toISOString().substring(0, 10)))) {
     nextDate.setDate(nextDate.getDate() + 1);
   }
 

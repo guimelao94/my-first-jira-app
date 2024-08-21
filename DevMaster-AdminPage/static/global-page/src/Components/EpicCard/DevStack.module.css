@@ -16,3 +16,9 @@
     color:#282828 !important;
 }
 
+.DevRow{
+    justify-content:center;
+    background-color: #282828;
+    color:#f1f1f1 !important;
+    font-weight: 500 !important;
+}

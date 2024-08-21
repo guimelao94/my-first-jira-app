@@ -43,15 +43,15 @@ resources:
 app:
   runtime:
     name: nodejs18.x
-  id: ari:cloud:ecosystem::app/dd3a99a1-5b49-4e56-a3c1-11b7a6af4430
+  id: ari:cloud:ecosystem::app/febc03a7-f422-40f0-8c4c-07a42c5856ff
   storage:
     entities:
       - name: cards
         attributes:
-          ID: 
+          ID:
             type: integer
-          EpicKey: 
-            type: string          
+          EpicKey:
+            type: string
 permissions:
   scopes:
     - read:jira-work

@@ -13,6 +13,7 @@ export const HandleDevStacks = (state) => {
 
             return {
                 FullName: d.FullName,
+                ShortName:d.ShortName,
                 TotalHours: d.RemainingWork ? (d.RemainingWork / 3600) + (d.OverflowHours ? d.OverflowHours : 0) : 0,
                 OverflowHours: d.OverflowTime ? d.OverflowTime / 3600 : 0,
                 EpicKey: currentEpic.EpicKey

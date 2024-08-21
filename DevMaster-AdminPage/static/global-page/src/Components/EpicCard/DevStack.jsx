@@ -6,11 +6,12 @@ import { useSelector } from 'react-redux';
 import { useEffect, useState } from 'react';
 import { addWeekdays, getDifferenceInDays } from '../../Utils/DateTools';
 
-export const DevStack = ({ epicKey }) => {
+export const DevStack = ({ epicKey,showIssues }) => {
     const epics = useSelector((state) => {
         return state.epics;
     })
     const Epic = epics.data.find(x=>x.EpicKey == epicKey);
+    
 
     useEffect(()=>{
         console.log(epics);
@@ -24,7 +25,7 @@ export const DevStack = ({ epicKey }) => {
                 <Header className={Style.HeaderCell} width={145}>Totals</Header>
                 {Epic.DevStack && Epic.DevStack.map((developer) => (
                     <Header width={145} className={Style.HeaderCell}>
-                        {developer.TotalHours}H
+                        {developer.TotalHours.toFixed(2)}H
                     </Header>
                 ))}
             </Headers>
@@ -35,10 +36,11 @@ export const DevStack = ({ epicKey }) => {
                     { Label: 'Day To Begin Dev Work', Property: 'StartDate' },
                     { Label: 'Due Date', Property: 'OnTrack' },
                     { Label: 'Done by', Property: 'DoneBy' },
-                    { Label: 'Overflow Hours', Property: 'OverflowHours' }
+                    { Label: 'Overflow Hours', Property: 'OverflowHours' },
+                    { isDevRow: !showIssues, Label:'Developers', Property:'ShortName'}
                 ]}
-                render={({ Label, Property }) => (
-                    <Row
+                render={({ Label, Property,isDevRow }) => (
+                    !isDevRow ?  <Row
                         items={[]}
                         hasChildren={false}
                         isDefaultExpanded
@@ -53,7 +55,24 @@ export const DevStack = ({ epicKey }) => {
                         ))
                         }
                     </Row>
+                    :
+                    <Row
+                        items={[]}
+                        hasChildren={false}
+                        isDefaultExpanded
+                    >
+                        <Cell className={Style.DevRow} width={145}>{Label}</Cell>
+                        {Epic.DevStack && Epic.DevStack.map((developer) => (
+                            <Cell width={145} className={Style.DevRow}>
+                                <Inline>
+                                    <span style={{}}>{developer[Property]}</span>
+                                </Inline>
+                            </Cell>
+                        ))
+                        }
+                    </Row>
                 )}
+                
             />
         </TableTree>
     );

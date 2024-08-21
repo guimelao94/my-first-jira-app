@@ -1,3 +1,9 @@
 .DevOffTrack{
-    background-color:#f959591c
+    border-right-color: #f959591c;
+    border-right-style: solid;
+    border-right-width: 1.5px;
+    border-left-color: #f959591c;
+    border-left-style: solid;
+    border-left-width: 1.5px;
+    background-color: #f86c6c09;
 }

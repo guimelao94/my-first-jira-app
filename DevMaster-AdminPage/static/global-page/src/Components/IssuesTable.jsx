@@ -7,6 +7,7 @@ import { useSelector } from 'react-redux';
 import { useEffect } from 'react';
 import Avatar, { AvatarItem } from '@atlaskit/avatar';
 import CheckIcon from '@atlaskit/icon/glyph/check'
+import { ViewIssueModal } from '@forge/jira-bridge';
 
 export const IssuesTable = ({ developers, issues, EpicKey }) => {
     console.log(developers);
@@ -17,6 +18,8 @@ export const IssuesTable = ({ developers, issues, EpicKey }) => {
     const currentEpic = epics.data.find(x => x.EpicKey == EpicKey);
     const StackStyle = xcss({ textAlign: 'center' });
     const HeaderStyle = xcss({ justifyContent: 'center' });
+
+    var viewIssueModal = null;
 
     const sumOverflowHours = (overflowTime, dev) => {
         console.log(overflowTime);
@@ -35,53 +38,67 @@ export const IssuesTable = ({ developers, issues, EpicKey }) => {
     }, [epics.AllDevStacksLoaded])
 
     return (
-        <TableTree label="Automatically controlled row expansion">
-            <Headers>
-                <Header width={160}>Ticket #</Header>
-                {developers.map((developer) => (
-                    <Header width={145} className={currentEpic.DevStack && currentEpic.DevStack.some(d => d.FullName == developer.FullName && d.OnTrack == "Off Track") ? "DevOffTrack" : ""}>
-                        {developer.ShortName}
-                        <span style={{ marginLeft: '.3em' }}><Lozenge appearance="new">{convertToHours(developer.RemainingWork)}</Lozenge></span>
-                    </Header>
-                ))}
-            </Headers>
-            <Rows
-                items={issues}
-                render={({ ticketNumber, dev, remainingTime, overflowTime, worklogs, idx, assignee, status, isCompleted }) => (
-                    <Row
-                        items={[]}
-                        hasChildren={false}
-                        isDefaultExpanded
-                    >
-                        <Cell>
-                            <Inline>
-                                <AvatarItem
-                                    avatar={<Avatar name={assignee.FullName} src={assignee.AvatarUrl} size='small' />}
-                                    primaryText={ticketNumber}
-                                />
-                                {isCompleted &&
-                                    <Box xcss={xcss({ color: 'color.text.success' })}>
-                                        <CheckIcon label="" size="large" />
-                                    </Box>
-                                }
-                            </Inline>
-
-                            <Lozenge appearance="success" isBold>{status}</Lozenge>
-                        </Cell>
-                        {developers.map((developer) => (
-                            <Cell className={currentEpic.DevStack && currentEpic.DevStack.some(d => d.FullName == developer.FullName && d.OnTrack == "Off Track") ? "DevOffTrack" : ""}>
+        <div style={{marginTop:"15px"}}>
+            <TableTree label="Automatically controlled row expansion">
+                <Headers>
+                    <Header width={160}>Ticket #</Header>
+                    {developers.map((developer) => (
+                        <Header width={145} className={currentEpic.DevStack && currentEpic.DevStack.some(d => d.FullName == developer.FullName && d.OnTrack == "Off Track") ? "DevOffTrack" : ""}>
+                            {developer.ShortName}
+                            <span style={{ marginLeft: '.3em' }}><Lozenge appearance="new">{convertToHours(developer.RemainingWork)}</Lozenge></span>
+                        </Header>
+                    ))}
+                </Headers>
+                <Rows
+                    items={issues}
+                    render={({ ticketNumber, dev, remainingTime, overflowTime, worklogs, idx, assignee, status, isCompleted }) => (
+                        <Row
+                            items={[]}
+                            hasChildren={false}
+                            isDefaultExpanded
+                        >
+                            <Cell>
                                 <Inline>
-                                    {developer.FullName == dev.FullName && <span style={{ paddingRight: '5px' }}><Lozenge appearance="new">{convertToHours(developer.FullName == dev.FullName ? remainingTime : 0)}</Lozenge></span>}
-                                    {worklogs.some(x => x.Developer == developer.FullName) && <span style={{ paddingRight: '5px' }}><Lozenge style={{ paddingRight: '.5em' }}>{convertToHours(worklogs.length > 0 ? worklogs.find(x => x.Developer == developer.FullName)?.TimeSpent : 0)}</Lozenge></span>}
-                                    {((overflowTime && overflowTime.length > 0 && overflowTime.some(x => x.Developer.FullName == developer.FullName))) && <span><Lozenge appearance="inprogress">{convertToHours(overflowTime && overflowTime.length > 0 && overflowTime.some(x => x.Developer.FullName == developer.FullName) ? sumOverflowHours(overflowTime, developer.FullName) : 0)}</Lozenge></span>}
+                                    <AvatarItem
+                                        avatar={<Avatar name={assignee.FullName} src={assignee.AvatarUrl} size='small' />}
+                                        primaryText={ticketNumber}
+                                        onClick={()=>{
+                                            viewIssueModal = new ViewIssueModal({
+                                                onClose: () => {
+                                                  console.log('ViewIssueModal closed');
+                                                },
+                                                context: {
+                                                  issueKey: ticketNumber,
+                                                },
+                                              });
+                                              
+                                              viewIssueModal.open();
+                                        }}
+                                    />
+                                    {isCompleted &&
+                                        <Box xcss={xcss({ color: 'color.text.success' })}>
+                                            <CheckIcon label="" size="large" />
+                                        </Box>
+                                    }
                                 </Inline>
-                            </Cell>
 
-                        ))
-                        }
-                    </Row>
-                )}
-            />
-        </TableTree>
+                                <Lozenge appearance="success" isBold>{status}</Lozenge>
+                            </Cell>
+                            {developers.map((developer) => (
+                                <Cell className={currentEpic.DevStack && currentEpic.DevStack.some(d => d.FullName == developer.FullName && d.OnTrack == "Off Track") ? "DevOffTrack" : ""}>
+                                    <Inline>
+                                        {developer.FullName == dev.FullName && <span style={{ paddingRight: '5px' }}><Lozenge appearance="new">{convertToHours(developer.FullName == dev.FullName ? remainingTime : 0)}</Lozenge></span>}
+                                        {worklogs.some(x => x.Developer == developer.FullName) && <span style={{ paddingRight: '5px' }}><Lozenge style={{ paddingRight: '.5em' }}>{convertToHours(worklogs.length > 0 ? worklogs.find(x => x.Developer == developer.FullName)?.TimeSpent : 0)}</Lozenge></span>}
+                                        {((overflowTime && overflowTime.length > 0 && overflowTime.some(x => x.Developer.FullName == developer.FullName))) && <span><Lozenge appearance="inprogress">{convertToHours(overflowTime && overflowTime.length > 0 && overflowTime.some(x => x.Developer.FullName == developer.FullName) ? sumOverflowHours(overflowTime, developer.FullName) : 0)}</Lozenge></span>}
+                                    </Inline>
+                                </Cell>
+
+                            ))
+                            }
+                        </Row>
+                    )}
+                />
+            </TableTree>
+        </div>
     );
 }
