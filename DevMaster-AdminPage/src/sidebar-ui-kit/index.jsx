@@ -70,7 +70,7 @@ const App = () => {
         }
         console.log(Developer);
         var issue = null;
-        const storageData = await invoke('Storage.GetData', { key: context.extension.issue.key });
+        var storageData = await invoke('Storage.GetData', { key: context.extension.issue.key });
 
         if (Object.values(storageData).length > 0) {
             if (!storageData.Overflow) {

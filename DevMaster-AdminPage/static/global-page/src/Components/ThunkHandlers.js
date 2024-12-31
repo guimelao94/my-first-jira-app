@@ -112,11 +112,16 @@ const FillIssueData = async ({ item, index }) => {
     assignee:{FullName:item.fields?.assignee?.displayName,AvatarUrl:item.fields?.assignee?.avatarUrls["16x16"]},
     isCompleted:customFields.isCompleted,
     status:item.fields?.status?.name,
-    remainingTime: item.fields?.timeestimate ? (item.fields?.timeestimate + (customFields.Overflow ? (customFields.Overflow.reduce((total, item) => total + (item['TimeSpent'] || 0), 0)) : 0)) : 0,
+    remainingTime: item.fields?.timeoriginalestimate ? ((item.fields?.timeoriginalestimate - item.fields?.timespent) + (customFields.Overflow ? (customFields.Overflow.reduce((total, item) => total + (item['TimeSpent'] || 0), 0)) : 0)) : 0,
     timespent: item.fields?.timespent,
     originalestimate: item.fields?.timeoriginalestimate,
     overflowTime: customFields.Overflow,
     worklogs: workLogs
+  };
+  var overflowTime = (issueData.timespent || 0) - (issueData.originalestimate || 0);
+  issueData = {
+    ...issueData,
+    overflowCalculated: overflowTime <= 0 ? 0 : overflowTime
   }
   //console.log(issueData);
   return issueData;
