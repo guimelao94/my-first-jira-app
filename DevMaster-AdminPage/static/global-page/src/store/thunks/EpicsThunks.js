@@ -2,7 +2,7 @@ import { invoke, requestJira } from "@forge/bridge";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
 export const fetchAvailableEpics = createAsyncThunk('epics/fetchAvailable',async ()=>{
-    const res = await requestJira(`/rest/api/3/search?jql=issueType=Epic%20ORDER%20BY%20updated%20DESC&maxResults=1000`);
+    const res = await requestJira(`/rest/api/3/search/jql?jql=issueType=Epic%20ORDER%20BY%20updated%20DESC&maxResults=1000&fields=*all`);
 
     const data = await res.json();
 
@@ -61,8 +61,11 @@ export const ProcessEpic = createAsyncThunk('epics/Process',async (epicKey)=>{
     console.log(data);
 
     if (data.fields.issuetype.name == "Epic") {
-        const jql = await requestJira(`/rest/api/3/search?jql=parent=${epicKey}&maxResults=1000`);
+        const jql = await requestJira(`/rest/api/3/search/jql?jql=parent=${epicKey}&maxResults=1000&fields=*all`);
+        console.log(`Response: ${jql.status} ${jql.statusText}`);
         const returnedData = await jql.json();
+        console.log(returnedData);
+
         const EpicObj = {
             EpicKey: epicKey,
             DueDate: data.fields.duedate,
