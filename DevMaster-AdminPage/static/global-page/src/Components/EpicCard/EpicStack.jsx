@@ -1,8 +1,10 @@
 import { EpicStack_Row } from '../TopCard_Misc';
 import Lozenge from '@atlaskit/lozenge';
+import { memo } from 'react';
 
-export const EpicStack = ({cardData}) => {
-    console.log(cardData);
+export const EpicStack = memo(({cardData}) => {
+    if (!cardData) return null;
+    
     return(
         <div style={{"marginBottom":".5em"}}>
             <EpicStack_Row label={"Time Remaining:"} value={<Lozenge appearance="new">{cardData.TimeRemaining}</Lozenge>}/>
@@ -11,4 +13,4 @@ export const EpicStack = ({cardData}) => {
             <EpicStack_Row label={"Overflow Time:"} value={<Lozenge appearance="inprogress">{cardData.OverflowTime}</Lozenge>}/>
         </div>
     );
-}
+});

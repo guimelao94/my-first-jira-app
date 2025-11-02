@@ -4,46 +4,37 @@ import { Box, Inline, Stack, xcss } from '@atlaskit/primitives';
 import './IssuesTable.css';
 import Lozenge from '@atlaskit/lozenge';
 import { useSelector } from 'react-redux';
-import { useEffect } from 'react';
+import { useEffect, memo, useMemo, useCallback } from 'react';
 import Avatar, { AvatarItem } from '@atlaskit/avatar';
 import CheckIcon from '@atlaskit/icon/glyph/check'
 import { ViewIssueModal } from '@forge/jira-bridge';
 
-export const IssuesTable = ({ developers, issues, EpicKey }) => {
-    console.log(developers);
-    console.log(issues);
-    const epics = useSelector((state) => {
-        return state.epics;
-    })
-    const currentEpic = epics.data.find(x => x.EpicKey == EpicKey);
-    const StackStyle = xcss({ textAlign: 'center' });
-    const HeaderStyle = xcss({ justifyContent: 'center' });
+export const IssuesTable = memo(({ developers, issues, EpicKey }) => {
+    const data = useSelector((state) => state.epics.data);
+    const allDevStacksLoaded = useSelector((state) => state.epics.AllDevStacksLoaded);
+    
+    const currentEpic = useMemo(() => {
+        return data?.find(x => x.EpicKey === EpicKey);
+    }, [data, EpicKey]);
 
-    var viewIssueModal = null;
-
-    const sumOverflowHours = (overflowTime, dev) => {
-        console.log(overflowTime);
-        console.log(dev);
-        var time = overflowTime.filter(x => x.Developer.FullName == dev).reduce((total, item) => total + (item['TimeSpent'] || 0), 0)
-        console.log(time);
-        return time;
-    }
-    if (issues.some(z => z.ticketNumber == 'DMA-5')) {
-        console.log(issues.filter(z => z.ticketNumber == 'DMA-5'));
-        console.log(issues.filter(z => z.ticketNumber == 'DMA-5')[0].worklogs.find(x => x.Developer == 'Julius Cesar'));
-    }
-
-    useEffect(() => {
-        console.log(currentEpic);
-    }, [epics.AllDevStacksLoaded])
+    const sumOverflowHours = useCallback((overflowTime, dev) => {
+        if (!overflowTime || !Array.isArray(overflowTime)) return 0;
+        return overflowTime
+            .filter(x => x.Developer?.FullName === dev)
+            .reduce((total, item) => total + (item.TimeSpent || 0), 0);
+    }, []);
 
     return (
         <div style={{marginTop:"15px"}}>
             <TableTree label="Automatically controlled row expansion">
                 <Headers>
                     <Header width={160}>Ticket #</Header>
-                    {developers.map((developer) => (
-                        <Header width={145} className={currentEpic.DevStack && currentEpic.DevStack.some(d => d.FullName == developer.FullName && d.OnTrack == "Off Track") ? "DevOffTrack" : ""}>
+                    {developers?.map((developer) => (
+                        <Header 
+                            key={developer.FullName}
+                            width={145} 
+                            className={currentEpic?.DevStack?.some(d => d.FullName === developer.FullName && d.OnTrack === "Off Track") ? "DevOffTrack" : ""}
+                        >
                             {developer.ShortName}
                             <span style={{ marginLeft: '.3em' }}><Lozenge appearance="new">{convertToHours(developer.RemainingWork)}</Lozenge></span>
                         </Header>
@@ -63,16 +54,16 @@ export const IssuesTable = ({ developers, issues, EpicKey }) => {
                                         avatar={<Avatar name={assignee.FullName} src={assignee.AvatarUrl} size='small' />}
                                         primaryText={ticketNumber}
                                         onClick={()=>{
-                                            viewIssueModal = new ViewIssueModal({
+                                            const modal = new ViewIssueModal({
                                                 onClose: () => {
-                                                  console.log('ViewIssueModal closed');
+                                                  // Modal closed
                                                 },
                                                 context: {
                                                   issueKey: ticketNumber,
                                                 },
                                               });
                                               
-                                              viewIssueModal.open();
+                                            modal.open();
                                         }}
                                     />
                                     {isCompleted &&
@@ -85,11 +76,27 @@ export const IssuesTable = ({ developers, issues, EpicKey }) => {
                                 <Lozenge appearance="success" isBold>{status}</Lozenge>
                             </Cell>
                             {developers.map((developer) => (
-                                <Cell className={currentEpic.DevStack && currentEpic.DevStack.some(d => d.FullName == developer.FullName && d.OnTrack == "Off Track") ? "DevOffTrack" : ""}>
+                                <Cell className={currentEpic?.DevStack?.some(d => d.FullName === developer.FullName && d.OnTrack === "Off Track") ? "DevOffTrack" : ""}>
                                     <Inline>
-                                        {developer.FullName == dev.FullName && <span style={{ paddingRight: '5px' }}><Lozenge appearance="new">{convertToHours(developer.FullName == dev.FullName ? remainingTime : 0)}</Lozenge></span>}
-                                        {worklogs.some(x => x.Developer == developer.FullName) && <span style={{ paddingRight: '5px' }}><Lozenge style={{ paddingRight: '.5em' }}>{convertToHours(worklogs.length > 0 ? worklogs.find(x => x.Developer == developer.FullName)?.TimeSpent : 0)}</Lozenge></span>}
-                                        {((overflowTime && overflowTime.length > 0 && overflowTime.some(x => x.Developer.FullName == developer.FullName))) && <span><Lozenge appearance="inprogress">{convertToHours(overflowTime && overflowTime.length > 0 && overflowTime.some(x => x.Developer.FullName == developer.FullName) ? sumOverflowHours(overflowTime, developer.FullName) : 0)}</Lozenge></span>}
+                                        {developer.FullName === dev.FullName && (
+                                            <span style={{ paddingRight: '5px' }}>
+                                                <Lozenge appearance="new">{convertToHours(remainingTime)}</Lozenge>
+                                            </span>
+                                        )}
+                                        {worklogs?.some(x => x.Developer === developer.FullName) && (
+                                            <span style={{ paddingRight: '5px' }}>
+                                                <Lozenge style={{ paddingRight: '.5em' }}>
+                                                    {convertToHours(worklogs.find(x => x.Developer === developer.FullName)?.TimeSpent || 0)}
+                                                </Lozenge>
+                                            </span>
+                                        )}
+                                        {overflowTime?.some(x => x.Developer?.FullName === developer.FullName) && (
+                                            <span>
+                                                <Lozenge appearance="inprogress">
+                                                    {convertToHours(sumOverflowHours(overflowTime, developer.FullName))}
+                                                </Lozenge>
+                                            </span>
+                                        )}
                                     </Inline>
                                 </Cell>
 
@@ -99,6 +106,6 @@ export const IssuesTable = ({ developers, issues, EpicKey }) => {
                     )}
                 />
             </TableTree>
-        </div>
+                            </div>
     );
-}
+});

@@ -40,40 +40,26 @@ export const ProductLayout = ({ children }) => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState(null);
 	const dispatch = useDispatch();
-	const epics = useSelector((state) => {
-		return state.epics;
-	})
+	
+	// Memoized selectors to prevent unnecessary re-renders
+	const reloadCounter = useSelector((state) => state.epics.reloadCounter);
+	const saveDevCounter = useSelector((state) => state.epics.SaveDevCounter);
+	const selected = useSelector((state) => state.epics.Selected);
+	const data = useSelector((state) => state.epics.data);
+	const available = useSelector((state) => state.epics.Available);
+	const loaded = useSelector((state) => state.epics.loaded);
 
 	useEffect(() => {
-		HandleEpicThunks(dispatch, 'FullRefresh',epics);
-		console.log(epics.reloadCounter);
-		console.log(epics);
-	}, [epics.reloadCounter]);
+		const currentState = { reloadCounter };
+		HandleEpicThunks(dispatch, 'FullRefresh', currentState);
+	}, [dispatch, reloadCounter]);
 
 	useEffect(() => {
-		if (epics.AllIssuesLoaded) {
-			console.log(epics);
+		if (saveDevCounter > 0) {
+			const currentState = { SaveDevCounter: saveDevCounter };
+			HandleEpicThunks(dispatch, 'EpicRefresh', currentState);
 		}
-
-	}, [epics.AllIssuesLoaded]);
-
-	useEffect(() => {
-		console.log(epics);
-	}, [epics.AllDevStacksLoaded]);
-
-	useEffect(() => {
-		console.log(epics.SaveDevCounter);
-		if (epics.SaveDevCounter > 0) {
-			HandleEpicThunks(dispatch, 'EpicRefresh',epics);
-		}
-	}, [epics.SaveDevCounter]);
-
-	useEffect(() => {
-		console.log(epics.loaded);
-		if (epics.loaded) {
-			console.log(epics);
-		}
-	}, [epics.loaded]);
+	}, [dispatch, saveDevCounter]);
 
 	if (isLoading) {
 		return <div>Loading...</div>
@@ -92,7 +78,7 @@ export const ProductLayout = ({ children }) => {
 				<TopNavigationContents />
 			</TopNavigation>
 			<Content testId="content">
-				{(epics.Selected && epics.Selected.length > 0) && <LeftSidebar
+				{(selected && selected.length > 0) && <LeftSidebar
 					isFixed={false}
 					width={450}
 					id="project-navigation"
@@ -107,8 +93,8 @@ export const ProductLayout = ({ children }) => {
 				<Main id="main-content" skipLinkTitle="Main Content">
 					<BasicGrid>
 						{
-							epics.data && epics.Available && epics.Selected && epics.data.map((item, index) => (
-								<EpicCard key={index} epicKey={item.EpicKey} />
+							data && available && selected && data.map((item) => (
+								<EpicCard key={item.EpicKey} epicKey={item.EpicKey} />
 							))
 						}
 					</BasicGrid>
@@ -137,31 +123,29 @@ function TopNavigationContents() {
 }
 
 const SideNavigationContent = ({ }) => {
-	const { Developers,Holidays } = useSelector((state) => {
-		return state.epics;
-	})
-	console.log(Holidays);
+	const developers = useSelector((state) => state.epics.Developers);
+	const holidays = useSelector((state) => state.epics.Holidays);
 	return (
 		<SideNavigation label="Project navigation" testId="side-navigation">
 			<NavigationHeader>
 				<Header description="Use this section to indicate how many hours each developer is available to work on the selected epics">Developer Time Allocation</Header>
 			</NavigationHeader>
 			<Box>
-				{(Developers && Developers.length > 0) ? <DeveloperTable /> : <Spinner size={'large'} />}
+				{(developers && developers.length > 0) ? <DeveloperTable /> : <Spinner size={'large'} />}
 			</Box>
 
 			<NavigationHeader>
 				<Header description="Scheduled developer time off">Developer Time Off</Header>
 			</NavigationHeader>
 			<Box>
-				{(Developers && Developers.length > 0) ? <TimeOffTable /> : <Spinner size={'large'} />}
+				{(developers && developers.length > 0) ? <TimeOffTable /> : <Spinner size={'large'} />}
 			</Box>
 
 			<NavigationHeader>
 				<Header description="Holidays">Holidays</Header>
 			</NavigationHeader>
 			<Box>
-				{(Developers && Developers.length > 0) ? <HolidaysTable /> : <Spinner size={'large'} />}
+				{(developers && developers.length > 0) ? <HolidaysTable /> : <Spinner size={'large'} />}
 			</Box>
 		</SideNavigation>
 	);
@@ -177,7 +161,7 @@ export const DefaultCreate = () => (
 
 const ProductHomeExample = () => (
 	<ProductHome
-		onClick={console.log}
+		onClick={noop}
 		icon={JiraIcon}
 		logo={JiraLogo}
 		siteTitle="Dev Master Hub"

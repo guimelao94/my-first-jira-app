@@ -1,32 +1,48 @@
 export const groupByDevs = (array, property) => {
-    console.log(array);
-    if (array.length == 0 || !array.some(x=>x[property] != undefined)) return [];
-    var devs = [...new Set(array.map(obj => obj[property]))];
-    console.log(devs);
-    var overflowDevs = [];
-    devs = devs.filter(dev=>dev != undefined && dev != '');
-    for (var issue of array) {
-        if(issue.overflowTime && issue.overflowTime.length > 0){
-            overflowDevs = [...new Set(issue.overflowTime.map(obj => obj['Developer']))];
-            devs = [...new Set([...devs, ...overflowDevs])];
-            console.log(overflowDevs);
+    if (!array || array.length === 0 || !array.some(x => x[property] !== undefined)) {
+        return [];
+    }
+    
+    // Collect all developers from property
+    let devs = new Set(array.map(obj => obj[property]).filter(Boolean));
+    
+    // Collect overflow developers
+    const overflowDevsSet = new Set();
+    for (const issue of array) {
+        if (issue.overflowTime && Array.isArray(issue.overflowTime) && issue.overflowTime.length > 0) {
+            issue.overflowTime.forEach(item => {
+                if (item?.Developer) {
+                    overflowDevsSet.add(item.Developer);
+                }
+            });
         }
     }
-    var uniqueDevs = removeDuplicates(devs);
-    console.log(devs);
-    console.log(uniqueDevs);
-    console.log(array);
+    
+    // Merge both sets
+    overflowDevsSet.forEach(dev => devs.add(dev));
+    const uniqueDevs = removeDuplicates(Array.from(devs));
+    
+    // Optimize: pre-filter arrays for each dev to avoid repeated filtering
     return uniqueDevs.map(value => {
         const [firstName, lastName] = value.FullName.split(' ');
-        const shortName = value == "" ? "" :`${firstName} ${lastName[0]}.`;
+        const shortName = value === "" ? "" : `${firstName} ${lastName?.[0] || ''}.`;
+        
+        // Pre-filter issues for this dev to improve performance
+        const devIssues = array.filter(x => x[property]?.FullName === value.FullName);
+        const overflowIssues = array.filter(x => 
+            x.overflowTime?.some(y => y.Developer?.FullName === value.FullName)
+        );
+        
         return { 
             FullName: value.FullName, 
             ShortName: shortName,
-            AccountID:value.AccountID,
-            RemainingWork:array.filter(x=>x[property].FullName == value.FullName && !x.isCompleted).reduce((total, item) => total + (item['remainingTime'] || 0), 0),
-            TimeSpent:array.filter(x=>x[property].FullName == value.FullName).reduce((total, item) => total + (item['timespent'] || 0), 0),
-            OriginalEstimate:array.filter(x=>x[property].FullName == value.FullName).reduce((total, item) => total + (item['originalestimate'] || 0), 0),
-            OverflowTime:array.filter(x=>x.overflowTime && x.overflowTime.some(y=> y.Developer.FullName == value.FullName)).reduce((total, item) => total + SumOverflow(item,value.FullName), 0)
+            AccountID: value.AccountID,
+            RemainingWork: devIssues
+                .filter(x => !x.isCompleted)
+                .reduce((total, item) => total + (item['remainingTime'] || 0), 0),
+            TimeSpent: devIssues.reduce((total, item) => total + (item['timespent'] || 0), 0),
+            OriginalEstimate: devIssues.reduce((total, item) => total + (item['originalestimate'] || 0), 0),
+            OverflowTime: overflowIssues.reduce((total, item) => total + SumOverflow(item, value.FullName), 0)
         };
     });
 }
@@ -44,17 +60,10 @@ const removeDuplicates = (arr) => {
     });
 }
 
-const SumOverflow =(item,value)=>{
-    console.log(item);
-    console.log(value);
-    if(!item['overflowTime']) return 0;
-    const isDevTime = item['overflowTime'].some(x=>x.Developer.FullName == value);
-    var devTimePerDev = null;
-    if(isDevTime){
-        devTimePerDev = item['overflowTime'].filter(x=>x.Developer.FullName == value);
-    }
-    console.log(isDevTime);
-    console.log(devTimePerDev);
-    if(!isDevTime) return 0;
-    return ( isDevTime ? devTimePerDev.reduce((total, item) => total + (item['TimeSpent'] || 0), 0) : 0 || 0);
+const SumOverflow = (item, value) => {
+    if(!item?.overflowTime || !Array.isArray(item.overflowTime)) return 0;
+    
+    return item.overflowTime
+        .filter(x => x.Developer?.FullName === value)
+        .reduce((total, overflowItem) => total + (overflowItem.TimeSpent || 0), 0);
 }

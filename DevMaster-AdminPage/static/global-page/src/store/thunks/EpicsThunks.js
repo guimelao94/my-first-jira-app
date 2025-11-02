@@ -6,79 +6,64 @@ export const fetchAvailableEpics = createAsyncThunk('epics/fetchAvailable',async
 
     const data = await res.json();
 
-    var epicList = data.issues.map((item) => ({
+    return data.issues.map((item) => ({
         label: item.key,
         value: item.key
     }));
-
-    console.log(data);
-    console.log(epicList);
-
-    return epicList;
 });
 
 export const fetchSelectedEpics = createAsyncThunk('epics/fetchSelected',async ()=>{
-    console.log('fetchSelected');
     try {
         const res = await invoke('Storage.GetData', { key: 'Cards' });
-        console.log(res);
-        return res;
+        return res || [];
     } catch (error) {
-        console.log(error);
+        console.error('Error fetching selected epics:', error);
+        return [];
     }
-    
-    
 });
 
 export const fetchHolidays = createAsyncThunk('epics/fetchHolidays',async ()=>{
-    console.log('fetchHolidays');
     try {
         const res = await invoke('Storage.GetData', { key: 'Holidays' });
-        console.log(res);
-        return res;
+        return res || [];
     } catch (error) {
-        console.log(error);
+        console.error('Error fetching holidays:', error);
+        return [];
     }
-    
-    
 });
 
 export const SaveSelectedEpics = createAsyncThunk('epics/SaveSelected',async (newArray)=>{    
-    invoke('Storage.SaveData', { key: 'Cards', value: newArray }).then((returnedData) => {
-        console.log(returnedData);
-    });
+    try {
+        await invoke('Storage.SaveData', { key: 'Cards', value: newArray });
+    } catch (error) {
+        console.error('Error saving selected epics:', error);
+        throw error;
+    }
     return newArray;
 });
 
 export const ProcessEpic = createAsyncThunk('epics/Process',async (epicKey)=>{
-    var issuesList = [];
+    try {
+        const res = await requestJira(`/rest/api/3/issue/${epicKey}`);
+        const data = await res.json();
 
-    console.log(epicKey);
-    const res = await requestJira(`/rest/api/3/issue/${epicKey}`);
+        if (data.fields?.issuetype?.name === "Epic") {
+            const jql = await requestJira(`/rest/api/3/search/jql?jql=parent=${epicKey}&maxResults=1000&fields=*all`);
+            const returnedData = await jql.json();
 
-    const data = await res.json();
-
-    console.log(data);
-
-    if (data.fields.issuetype.name == "Epic") {
-        const jql = await requestJira(`/rest/api/3/search/jql?jql=parent=${epicKey}&maxResults=1000&fields=*all`);
-        console.log(`Response: ${jql.status} ${jql.statusText}`);
-        const returnedData = await jql.json();
-        console.log(returnedData);
-
-        const EpicObj = {
-            EpicKey: epicKey,
-            DueDate: data.fields.duedate,
-            IssueType: data.fields.issuetype.name,
-            Issues:returnedData.issues,
-            Summary:data.fields.summary
-        };
-        console.log(EpicObj)
-        return EpicObj;
-    }else{
+            return {
+                EpicKey: epicKey,
+                DueDate: data.fields.duedate,
+                IssueType: data.fields.issuetype.name,
+                Issues: returnedData.issues || [],
+                Summary: data.fields.summary
+            };
+        }
         return null;
+    } catch (error) {
+        console.error(`Error processing epic ${epicKey}:`, error);
+        throw error;
     }
-
 });
 
 

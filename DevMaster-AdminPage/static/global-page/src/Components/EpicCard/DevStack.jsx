@@ -3,28 +3,24 @@ import { Inline, Stack, xcss } from '@atlaskit/primitives';
 import Style from './DevStack.module.css';
 import Lozenge from '@atlaskit/lozenge';
 import { useSelector } from 'react-redux';
-import { useEffect, useState } from 'react';
-import { addWeekdays, getDifferenceInDays } from '../../Utils/DateTools';
+import { memo, useMemo } from 'react';
 
-export const DevStack = ({ epicKey,showIssues }) => {
-    const epics = useSelector((state) => {
-        return state.epics;
-    })
-    const Epic = epics.data.find(x=>x.EpicKey == epicKey);
+export const DevStack = memo(({ epicKey, showIssues }) => {
+    const data = useSelector((state) => state.epics.data);
+    const allDevStacksLoaded = useSelector((state) => state.epics.AllDevStacksLoaded);
     
+    const epic = useMemo(() => {
+        return data?.find(x => x.EpicKey === epicKey);
+    }, [data, epicKey]);
 
-    useEffect(()=>{
-        console.log(epics);
-    },[]);
-
-    if(!epics.AllDevStacksLoaded) return;
+    if(!allDevStacksLoaded || !epic?.DevStack) return null;
 
     return (
         <TableTree label="Automatically controlled row expansion">
             <Headers>
                 <Header className={Style.HeaderCell} width={145}>Totals</Header>
-                {Epic.DevStack && Epic.DevStack.map((developer) => (
-                    <Header width={145} className={Style.HeaderCell}>
+                {epic.DevStack.map((developer) => (
+                    <Header key={developer.FullName} width={145} className={Style.HeaderCell}>
                         {developer.TotalHours.toFixed(2)}H
                     </Header>
                 ))}
@@ -46,14 +42,13 @@ export const DevStack = ({ epicKey,showIssues }) => {
                         isDefaultExpanded
                     >
                         <Cell className={Style.BodyLabel} width={145}>{Label}</Cell>
-                        {Epic.DevStack && Epic.DevStack.map((developer) => (
-                            <Cell width={145} className={Style.BodyCell}>
+                        {epic.DevStack.map((developer) => (
+                            <Cell key={developer.FullName} width={145} className={Style.BodyCell}>
                                 <Inline>
-                                    <span style={{}}>{developer[Property]}</span>
+                                    <span>{developer[Property]}</span>
                                 </Inline>
                             </Cell>
-                        ))
-                        }
+                        ))}
                     </Row>
                     :
                     <Row
@@ -62,18 +57,17 @@ export const DevStack = ({ epicKey,showIssues }) => {
                         isDefaultExpanded
                     >
                         <Cell className={Style.DevRow} width={145}>{Label}</Cell>
-                        {Epic.DevStack && Epic.DevStack.map((developer) => (
-                            <Cell width={145} className={Style.DevRow}>
+                        {epic.DevStack.map((developer) => (
+                            <Cell key={developer.FullName} width={145} className={Style.DevRow}>
                                 <Inline>
-                                    <span style={{}}>{developer[Property]}</span>
+                                    <span>{developer[Property]}</span>
                                 </Inline>
                             </Cell>
-                        ))
-                        }
+                        ))}
                     </Row>
                 )}
                 
             />
         </TableTree>
     );
-}
+});

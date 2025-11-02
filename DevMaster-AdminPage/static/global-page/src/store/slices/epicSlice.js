@@ -25,13 +25,14 @@ const epicsSlice = createSlice({
   reducers: {
     setDevelopers(state, action) {
       state.loaded = false;
-      console.log(action.payload);
       state.Developers = action.payload;
-      if (state.data && !state.data.some(x => x.Developers == null) && state.data.length === state.Selected.length && state.Developers.length > 0) {
-        console.log('loaded');
+      if (state.data && 
+          state.data.length > 0 && 
+          state.data.every(x => x.Developers != null) && 
+          state.data.length === state.Selected.length && 
+          state.Developers.length > 0) {
         state.loaded = true;
       }
-
     },
     reOrderEpics(state, action) {
       if(state.data){
@@ -46,54 +47,50 @@ const epicsSlice = createSlice({
     },
     setEpicDevelopers(state, action) {
       state.loaded = false;
-      const idx = state.data.indexOf(x => x.EpicKey === action.payload.EpicKey);
-      console.log(action.payload);
-      for (let epic of state.data) {
-        if (epic.EpicKey === action.payload.EpicKey) {
-          epic.Developers = action.payload.Developers;
-        }
+      const epic = state.data?.find(x => x.EpicKey === action.payload.EpicKey);
+      if (epic) {
+        epic.Developers = action.payload.Developers;
       }
-      console.log(!state.data.some(x => x.Developers == null));
-      console.log(state.data.length);
-      console.log(state.Developers ? state.Developers.length:0);
-      if (state.data && !state.data.some(x => x.Developers == null) && state.Developers && state.Developers.length > 0) {
-        console.log('DevelopersFull');
+      
+      if (state.data && 
+          state.data.every(x => x.Developers != null) && 
+          state.Developers && 
+          state.Developers.length > 0) {
         state.DevelopersFull = groupByDevs(state.issues,'dev');
-        console.log('loaded');
         state.loaded = true;
       }
     },
     setIssueData(state, action) {
       state.processed = true;
       state.isLoading = false;
-      const sumOverflow = (issue) =>{
-        console.log(issue);
-        if(!issue.overflowTime || issue.overflowTime.length == 0) return 0;
-        var sum = issue.overflowTime.reduce((total, item) => total + (item.TimeSpent  || 0),0);
-        console.log(sum);
-        return sum;
-      }
-      if (action.payload) {
-        console.log(action.payload);
+      
+      const sumOverflow = (issue) => {
+        if(!issue.overflowTime || issue.overflowTime.length === 0) return 0;
+        return issue.overflowTime.reduce((total, item) => total + (item.TimeSpent || 0), 0);
+      };
+      
+      if (action.payload && action.payload.length > 0) {
         if(state.issues == null) state.issues = [];
         state.issues.push(...action.payload);
-        for (var epic of state.data) {
-          if (epic.EpicKey == action.payload[0].EpicKey) {
-              epic.TimeRemaining = convertToHours(action.payload.reduce((total, item) => total + (item['remainingTime'] || 0), 0));
-              epic.TimeSpent = convertToHours(action.payload.reduce((total, item) => total + (item['timespent'] || 0), 0));
-              epic.OriginalEstimate = convertToHours(action.payload.reduce((total, item) => total + (item['originalestimate'] || 0), 0));
-              epic.OverflowTime = convertToHours(action.payload.reduce((total, item) => total + sumOverflow(item), 0));
-              epic.Developers = groupByDevs(action.payload,'dev');
-              epic.loaded = true;
-          }
+        
+        const epicKey = action.payload[0].EpicKey;
+        const epic = state.data?.find(e => e.EpicKey === epicKey);
+        
+        if (epic) {
+          const payloadIssues = action.payload;
+          epic.TimeRemaining = convertToHours(payloadIssues.reduce((total, item) => total + (item['remainingTime'] || 0), 0));
+          epic.TimeSpent = convertToHours(payloadIssues.reduce((total, item) => total + (item['timespent'] || 0), 0));
+          epic.OriginalEstimate = convertToHours(payloadIssues.reduce((total, item) => total + (item['originalestimate'] || 0), 0));
+          epic.OverflowTime = convertToHours(payloadIssues.reduce((total, item) => total + sumOverflow(item), 0));
+          epic.Developers = groupByDevs(payloadIssues,'dev');
+          epic.loaded = true;
         }
-        const totalIssues = state.data.reduce((accumulator, item) => {
-          return accumulator + item.Issues.length;
-        }, 0);
-        console.log(totalIssues);
-        console.log(state.issues.length);
-        if (state.Selected.length > 0 && totalIssues === state.issues.length) {
-          console.log('AllIssuesLoaded');
+        
+        const totalIssues = state.data?.reduce((accumulator, item) => {
+          return accumulator + (item.Issues?.length || 0);
+        }, 0) || 0;
+        
+        if (state.Selected?.length > 0 && totalIssues === state.issues.length) {
           state.AllIssuesLoaded = true;
         }
       }
@@ -160,7 +157,6 @@ const epicsSlice = createSlice({
     builder.addCase(ProcessEpic.fulfilled, (state, action) => {
       state.processed = true;
       state.isLoading = false;
-      console.log(action.payload);
       if (action.payload) {
         if(state.data == null) state.data = [];
         state.data.push(action.payload);

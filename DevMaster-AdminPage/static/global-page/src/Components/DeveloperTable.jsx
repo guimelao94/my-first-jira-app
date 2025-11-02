@@ -6,73 +6,69 @@ import InlineEdit from '@atlaskit/inline-edit';
 import { Box, xcss } from '@atlaskit/primitives';
 import { useDispatch, useSelector } from 'react-redux';
 import { setDevHours } from '../store/slices/epicSlice';
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useState, useCallback } from 'react';
 import { invoke } from '@forge/bridge';
 import Avatar, { AvatarItem } from '@atlaskit/avatar';
 
 export const DeveloperTable = memo(function DeveloperTable() {
     const dispatch = useDispatch();
-    const [renderForce, ReRender] = useState(0);
     const [devList, setDevList] = useState(null);
     const [unsaved, setUnsaved] = useState(null);
-    const { Developers, SaveDevCounter, data, Selected } = useSelector((state) => {
-        return state.epics;
-    })
+    
+    // Optimized selectors - only subscribe to needed values
+    const developers = useSelector((state) => state.epics.Developers);
+    const saveDevCounter = useSelector((state) => state.epics.SaveDevCounter);
+    const data = useSelector((state) => state.epics.data);
+    const selected = useSelector((state) => state.epics.Selected);
 
-    const onChange = (FullName, property, value) => {
-        const updatedDevelopers = devList.map((dev, i) =>
-            dev.FullName === FullName ? { ...dev, [property]: value } : dev
-        );
-        console.log(updatedDevelopers);
-
-        setDevList(updatedDevelopers);
+    const onChange = useCallback((FullName, property, value) => {
+        setDevList((prevList) => {
+            if (!prevList) return prevList;
+            return prevList.map((dev) =>
+                dev.FullName === FullName ? { ...dev, [property]: value } : dev
+            );
+        });
         setUnsaved(true);
-        ReRender(renderForce + 1);
-    }
+    }, []);
 
-    const onSave = async () => {
-        var localList = devList.map((dev) => ({ ...dev }));
-        for (let index = 0; index < localList.length; index++) {
-            var fullDev = null;
-            if (data.some(x => x.Developers.some(z => z.FullName == localList[index].FullName))) {
-                var list = data.filter(x => x.Developers.some(z => z.FullName == localList[index].FullName)).map((epic) => {
-                    var d = epic.Developers.find(z => z.FullName == localList[index].FullName)
-                    console.log(d)
-                    return d;
-
-                });
-                console.log(list);
-                fullDev = list[0];
-                localList[index] = { ...localList[index], AccountID: fullDev.AccountID }
+    const onSave = useCallback(async () => {
+        if (!devList || !data) return;
+        
+        const localList = devList.map((dev) => {
+            // Find developer in epic data to get AccountID
+            const epicWithDev = data.find(epic => 
+                epic.Developers?.some(z => z.FullName === dev.FullName)
+            );
+            
+            if (epicWithDev) {
+                const fullDev = epicWithDev.Developers.find(z => z.FullName === dev.FullName);
+                if (fullDev?.AccountID) {
+                    return { ...dev, AccountID: fullDev.AccountID };
+                }
             }
-        }
+            return dev;
+        });
 
-        console.log(localList)
         await dispatch(setDevHours(localList));
         setUnsaved(false);
-    }
+    }, [devList, data, dispatch]);
 
     const readViewContainerStyles = xcss({
         paddingBlock: 'space.100',
         paddingInline: 'space.075'
     });
 
-    console.log(Developers);
     useEffect(() => {
-        if (SaveDevCounter > 0) {
-            console.log(Developers);
-            invoke('Storage.SaveData', { key: 'DevelopersList', value: Developers });
+        if (saveDevCounter > 0 && developers) {
+            invoke('Storage.SaveData', { key: 'DevelopersList', value: developers });
         }
-
-    }, [SaveDevCounter])
-
-    useEffect(() => {
-        setDevList(Developers);
-    }, []);
+    }, [saveDevCounter, developers]);
 
     useEffect(() => {
-        ReRender(renderForce + 1);
-    }, [Selected])
+        if (developers) {
+            setDevList(developers);
+        }
+    }, [developers]);
     return (
         <>
             <TableTree label="Automatically controlled row expansion">
@@ -105,7 +101,7 @@ export const DeveloperTable = memo(function DeveloperTable() {
                                             {AvailableHours === 0 ? '0' : AvailableHours}
                                         </Box>
                                     )}
-                                    onConfirm={(value) => { onChange(FullName, 'AvailableHours', value) }}
+                                    onConfirm={(value) => onChange(FullName, 'AvailableHours', value)}
                                 />
                             </Cell>
                             <Cell>
@@ -117,7 +113,7 @@ export const DeveloperTable = memo(function DeveloperTable() {
                                             {Meetings === 0 ? '0' : Meetings}
                                         </Box>
                                     )}
-                                    onConfirm={(value) => { onChange(FullName, 'Meetings', value) }}
+                                    onConfirm={(value) => onChange(FullName, 'Meetings', value)}
                                 />
                             </Cell>
                             <Cell>
@@ -129,7 +125,7 @@ export const DeveloperTable = memo(function DeveloperTable() {
                                             {DevHours === 0 ? '0' : DevHours}
                                         </Box>
                                     )}
-                                    onConfirm={(value) => { onChange(FullName, 'DevHours', value) }}
+                                    onConfirm={(value) => onChange(FullName, 'DevHours', value)}
                                 />
                             </Cell>
                         </Row>
