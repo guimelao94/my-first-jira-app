@@ -8,3 +8,4 @@ export const store = configureStore({
 });
 
 export * from './thunks/EpicsThunks';
+export { fetchCurrentUser, fetchUserRole, updateUserRole, fetchAllUsers } from './thunks/EpicsThunks';

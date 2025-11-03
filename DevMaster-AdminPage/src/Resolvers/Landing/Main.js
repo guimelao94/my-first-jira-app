@@ -53,16 +53,21 @@ export const Storage = {
           );
         }
       },
-    GetData:(req) => {
+    GetData: async ({ payload, context }) => {
         try {
-          const result = storage.get(req.payload.key)
-          console.log(result);
-          return result;
+          // If context is available and payload.useUserPrefix is true, use user-specific key
+          let key = payload.key;
+          if (context?.accountId && payload.useUserPrefix) {
+            key = `${payload.key}_${context.accountId}`;
+          }
+          const result = await storage.get(key);
+          return result || {};
         } catch (error) {
           console.error(
             "Error retrieving target project object by target site:",
             error
           );
+          return {};
         }
       },
     GetData_Internal:(key) => {
@@ -73,16 +78,21 @@ export const Storage = {
           return error;
         }
       },
-    SaveData:async (req) => {
+    SaveData: async ({ payload, context }) => {
         try {
-          const result = await storage
-          .set(req.payload.key, req.payload.value);
+          // If context is available and payload.useUserPrefix is true, use user-specific key
+          let key = payload.key;
+          if (context?.accountId && payload.useUserPrefix) {
+            key = `${payload.key}_${context.accountId}`;
+          }
+          const result = await storage.set(key, payload.value);
           return result;
         } catch (error) {
           console.error(
-            "Error retrieving target project object by target site:",
+            "Error saving target project object:",
             error
           );
+          throw error;
         }
       },
       SaveData_Internal:async (key,value) => {

@@ -60,7 +60,12 @@ export const DeveloperTable = memo(function DeveloperTable() {
 
     useEffect(() => {
         if (saveDevCounter > 0 && developers) {
-            invoke('Storage.SaveData', { key: 'DevelopersList', value: developers });
+            // Developers list is kept global/shared - not user-specific
+            invoke('Storage.SaveData', { 
+                key: 'DevelopersList', 
+                value: developers,
+                useUserPrefix: false // Keep shared
+            });
         }
     }, [saveDevCounter, developers]);
 

@@ -4,7 +4,7 @@ import { reOrderEpics, setDevelopers, setEpicDevelopers, setEpicDevStack, setHol
 import { groupByDevs } from "../Utils/GroupingTools";
 import { invoke, requestJira } from "@forge/bridge";
 
-export const HandleEpicThunks = async (dispatch, type = 'FullRefresh', epics) => {
+export const HandleEpicThunks = async (dispatch, type = 'FullRefresh', epics, currentUserAccountId) => {
   let issueList = [];
   let selected = null;
   
@@ -21,17 +21,26 @@ export const HandleEpicThunks = async (dispatch, type = 'FullRefresh', epics) =>
       ]);
       
       selected = await dispatch(fetchSelectedEpics());
-      if (selected?.payload) {
+      console.log('FullRefresh: Selected epics:', selected?.payload);
+      // Process epics if we have any selected
+      if (selected?.payload && Array.isArray(selected.payload) && selected.payload.length > 0) {
+        console.log(`FullRefresh: Found ${selected.payload.length} selected epics, processing...`);
         await HandleEpics(dispatch, selected, issueList);
-        await HandleDevs(dispatch, issueList);
+        if (issueList.length > 0) {
+          await HandleDevs(dispatch, issueList, currentUserAccountId);
+        }
         await dispatch(reOrderEpics());
         await dispatch(setEpicDevStack());
+      } else {
+        console.log('FullRefresh: No selected epics found, initializing empty state');
+        // Even if no epics selected, ensure data is initialized as empty array
+        dispatch(setIssueData([]));
       }
       break;
     case 'EpicRefresh':
       await dispatch(fetchAvailableEpics());
       selected = await dispatch(fetchSelectedEpics());
-      if (selected?.payload) {
+      if (selected?.payload && Array.isArray(selected.payload) && selected.payload.length > 0) {
         await HandleEpics(dispatch, selected, issueList);
         await dispatch(reOrderEpics());
         await dispatch(setEpicDevStack());
@@ -42,35 +51,54 @@ export const HandleEpicThunks = async (dispatch, type = 'FullRefresh', epics) =>
   }
 }
 
-export const HandleDevs = async (dispatch, issueList) => {
+export const HandleDevs = async (dispatch, issueList, currentUserAccountId) => {
+  console.log(`HandleDevs: Processing ${issueList.length} issues`);
   const devs = groupByDevs(issueList, 'dev');
-  const data = await RefreshDevelopersList(devs);
+  console.log('HandleDevs: Grouped developers:', devs?.length || 0);
+  const data = await RefreshDevelopersList(devs, currentUserAccountId);
+  console.log('HandleDevs: Refreshed developers list:', data?.length || 0);
   await dispatch(setDevelopers(data));
+  console.log('HandleDevs: Completed');
 }
 
 export const HandleEpics = async (dispatch, selected, issueList) => {
-  if (!selected?.payload || !Array.isArray(selected.payload)) return;
+  if (!selected?.payload || !Array.isArray(selected.payload) || selected.payload.length === 0) {
+    console.log('HandleEpics: No selected epics to process');
+    return;
+  }
+  
+  console.log(`HandleEpics: Processing ${selected.payload.length} epics`);
   
   for (let index = 0; index < selected.payload.length; index++) {
     const element = selected.payload[index];
-    const epic = await dispatch(ProcessEpic(element));
-    
-    if (epic.payload && epic.payload.Issues) {
-      // Process issues in parallel for better performance
-      const issuePromises = epic.payload.Issues.map((issue, idx) => 
-        FillIssueData({ item: issue, index: idx })
-      );
-      const epicIssues = await Promise.all(issuePromises);
+    try {
+      console.log(`HandleEpics: Processing epic ${element}`);
+      const epic = await dispatch(ProcessEpic(element));
       
-      issueList.push(...epicIssues);
-      
-      const epicIssuesFiltered = issueList.filter(x => x.EpicKey === epic.payload.EpicKey);
-      await dispatch(setIssueData(epicIssuesFiltered));
-      
-      const devs = groupByDevs(epicIssuesFiltered, 'dev');
-      await dispatch(setEpicDevelopers({ EpicKey: epic.payload.EpicKey, Developers: devs }));
+      if (epic.payload && epic.payload.Issues) {
+        console.log(`HandleEpics: Epic ${element} has ${epic.payload.Issues.length} issues`);
+        // Process issues in parallel for better performance
+        const issuePromises = epic.payload.Issues.map((issue, idx) => 
+          FillIssueData({ item: issue, index: idx })
+        );
+        const epicIssues = await Promise.all(issuePromises);
+        
+        issueList.push(...epicIssues);
+        
+        const epicIssuesFiltered = issueList.filter(x => x.EpicKey === epic.payload.EpicKey);
+        await dispatch(setIssueData(epicIssuesFiltered));
+        
+        const devs = groupByDevs(epicIssuesFiltered, 'dev');
+        await dispatch(setEpicDevelopers({ EpicKey: epic.payload.EpicKey, Developers: devs }));
+      } else {
+        console.log(`HandleEpics: Epic ${element} has no issues or payload is null`);
+      }
+    } catch (error) {
+      console.error(`HandleEpics: Error processing epic ${element}:`, error);
     }
   }
+  
+  console.log(`HandleEpics: Completed processing, total issues: ${issueList.length}`);
 }
 
 const FillIssueData = async ({ item, index }) => {
@@ -138,7 +166,7 @@ const FillIssueData = async ({ item, index }) => {
   };
 }
 
-export const RefreshDevelopersList = async (devs) => {
+export const RefreshDevelopersList = async (devs, currentUserAccountId) => {
   const devsList = devs.map((dev) => ({
     FullName: dev.FullName,
     ShortName: dev.ShortName,
@@ -148,7 +176,12 @@ export const RefreshDevelopersList = async (devs) => {
     DevHours: 0
   }));
 
-  const returnedData = await invoke('Storage.GetData', { key: 'DevelopersList' });
+  // Developers list can be shared or user-specific - using shared for now
+  // Can be changed to user-specific if needed by adding useUserPrefix flag
+  const returnedData = await invoke('Storage.GetData', { 
+    key: 'DevelopersList',
+    useUserPrefix: false // Keep developers list global/shared
+  });
   
   if (!returnedData || Object.keys(returnedData).length === 0) {
     return devsList;

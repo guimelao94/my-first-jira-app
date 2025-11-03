@@ -1,0 +1,24 @@
+#epic-grid-all-epics,
+#epic-grid-manager,
+#epic-grid-developer,
+.epic-grid-container {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 16px !important;
+    width: 100% !important;
+    align-items: start !important;
+    margin-top: 16px !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+}
+
+#epic-grid-all-epics > div,
+#epic-grid-manager > div,
+#epic-grid-developer > div,
+.epic-grid-container > div {
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+}
+

@@ -13,7 +13,7 @@ import { setDevHours } from '../store/slices/epicSlice';
 import { HolidayEntryModal } from './HolidayEntryModal';
 import { StringToDate } from '../Utils/ConversionTools';
 
-export const HolidaysTable = memo(function HolidaysTable() {
+export const HolidaysTable = memo(function HolidaysTable({ readOnly = false }) {
     const dispatch = useDispatch();
     const [renderForce, ReRender] = useState(0);
     const [holidays, setHolidays] = useState([]);
@@ -27,7 +27,7 @@ export const HolidaysTable = memo(function HolidaysTable() {
     })
 
     const RemoveRecord = async (Date) =>{
-        var hdays = holidays.filter(x=>x !== Date);      
+        var hdays = (Array.isArray(holidays) ? holidays : []).filter(x=>x !== Date);      
         console.log(hdays);
         await invoke('Storage.SaveData', { key: 'Holidays', value: hdays });
         setHolidays(hdays);
@@ -35,10 +35,12 @@ export const HolidaysTable = memo(function HolidaysTable() {
     console.log(holidays);
     useEffect(() => {
         console.log(holidays);
-        if(Object.keys(Holidays).length > 0){
+        if(Holidays && Array.isArray(Holidays) && Holidays.length > 0){
             setHolidays([...Holidays].sort((a, b) => StringToDate(a) - StringToDate(b)));
+        } else if (!Holidays || !Array.isArray(Holidays)) {
+            setHolidays([]);
         }
-    }, []);
+    }, [Holidays]);
 
     return (
         <>
@@ -48,7 +50,7 @@ export const HolidaysTable = memo(function HolidaysTable() {
                     <Header width={100}><IconButton icon={TrashIcon} label="Remove Record" isDisabled /></Header>
                 </Headers>
                 <Rows
-                    items={holidays && holidays.map((val)=>({Date:val}))}
+                    items={(Array.isArray(holidays) ? holidays : []).map((val)=>({Date:val}))}
                     render={({ Date }) => (
                         <Row
                             items={[]}
@@ -59,15 +61,20 @@ export const HolidaysTable = memo(function HolidaysTable() {
                                 {Date}
                             </Cell>
                             <Cell singleLine>
-                                <IconButton icon={TrashIcon} label="Remove Record" onClick={()=>{RemoveRecord(Date)}} />
+                                {!readOnly && (
+                                    <IconButton icon={TrashIcon} label="Remove Record" onClick={()=>{RemoveRecord(Date)}} />
+                                )}
                             </Cell>
                         </Row>
                     )}
                 />
             </TableTree>}
-             <Button style={{float:'right',marginTop:'10px',marginRight:'10px'}}  appearance="primary" aria-haspopup="dialog" onClick={openModal}>Add Holiday</Button>
-
-            <HolidayEntryModal isOpen={isOpen} closeModal={closeModal} dispatch={dispatch} setHolidayList={setHolidays}/>
+             {!readOnly && (
+                 <>
+                     <Button style={{float:'right',marginTop:'10px',marginRight:'10px'}}  appearance="primary" aria-haspopup="dialog" onClick={openModal}>Add Holiday</Button>
+                     <HolidayEntryModal isOpen={isOpen} closeModal={closeModal} dispatch={dispatch} setHolidayList={setHolidays}/>
+                 </>
+             )}
 			
         </>
     );

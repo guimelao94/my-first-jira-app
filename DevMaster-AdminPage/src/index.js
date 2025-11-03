@@ -3,6 +3,8 @@ import { Sidebar_GetHeading } from './Resolvers/Sidebar/Main';
 import { CustomStorage, Storage } from './Resolvers/Landing/Main';
 import { storage, WhereConditions, SortOrder } from '@forge/api';
 import { Issue } from './Resolvers/Common/Issue';
+import { UserContext } from './Resolvers/User/UserContext';
+import { Bootstrap } from './Resolvers/User/Bootstrap';
 
 const resolver = new Resolver();
 
@@ -31,6 +33,25 @@ resolver.define('Storage.GetData2', async ({ payload, context }) => {
         );
       }
   });
+
+// User context resolvers
+resolver.define('User.GetCurrentUser', UserContext.getCurrentUser);
+resolver.define('User.GetUserRole', UserContext.getUserRole);
+resolver.define('User.SetUserRole', UserContext.setUserRole);
+resolver.define('User.GetAllUsers', UserContext.getAllUsers);
+
+// Bootstrap resolvers
+resolver.define('Bootstrap.InitializeAdmin', async ({ payload, context }) => {
+    // Use accountId from payload if provided, otherwise from context
+    const accountId = payload?.accountId || context?.accountId;
+    return await Bootstrap.initializeAdmin(accountId);
+});
+resolver.define('Bootstrap.HasAdmin', async () => {
+    return await Bootstrap.hasAdmin();
+});
+resolver.define('Bootstrap.GetInfo', async () => {
+    return await Bootstrap.getBootstrapInfo();
+});
 
 export const handler = resolver.getDefinitions();
 

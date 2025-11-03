@@ -11,7 +11,7 @@ import Button, { IconButton } from '@atlaskit/button/new';
 import { TimeOffModal } from './TimeOffEntryModal';
 import { setDevHours } from '../store/slices/epicSlice';
 
-export const TimeOffTable = memo(function TimeOffTable() {
+export const TimeOffTable = memo(function TimeOffTable({ readOnly = false }) {
     const dispatch = useDispatch();
     const [renderForce, ReRender] = useState(0);
     const [devList, setDevList] = useState([]);
@@ -31,7 +31,7 @@ export const TimeOffTable = memo(function TimeOffTable() {
     console.log(Developers);
 
     const RemoveRecord = async (Dev,Date) =>{
-        var devs = [...devList];
+        var devs = Array.isArray(devList) ? [...devList] : [];
 
         for (let index = 0; index < devs.length; index++) {
             
@@ -52,18 +52,19 @@ export const TimeOffTable = memo(function TimeOffTable() {
 
     useEffect(() => {
         console.log('TimeOff Table');
-        setDevList(Developers);
-    }, []);
+        setDevList(Array.isArray(Developers) ? Developers : []);
+    }, [Developers]);
 
     useEffect(() => {
         ReRender(renderForce + 1);
     }, [Selected])
 
     const mapTimeOff = (devs) => {
-        if (!devs) return [];
+        if (!devs || !Array.isArray(devs)) return [];
         var values = [];
         for (let i1 = 0; i1 < devs.length; i1++) {
             const d = devs[i1];
+            if (!d || !d.TimeOff || !Array.isArray(d.TimeOff)) continue;
             for (const t of d.TimeOff) {
                 values.push({
                     Developer:d.FullName,
@@ -82,7 +83,7 @@ export const TimeOffTable = memo(function TimeOffTable() {
                     <Header width={100}><IconButton icon={TrashIcon} label="Remove Record" isDisabled /></Header>
                 </Headers>
                 <Rows
-                    items={mapTimeOff(devList.filter(x=>x.TimeOff && x.TimeOff.length > 0))}
+                    items={mapTimeOff((devList || []).filter(x=>x && x.TimeOff && x.TimeOff.length > 0))}
                     render={({ Developer, Date }) => (
                         <Row
                             items={[]}
@@ -96,15 +97,20 @@ export const TimeOffTable = memo(function TimeOffTable() {
                                 {Date}
                             </Cell>
                             <Cell singleLine>
-                                <IconButton icon={TrashIcon} label="Remove Record" onClick={()=>{RemoveRecord(Developer,Date)}} />
+                                {!readOnly && (
+                                    <IconButton icon={TrashIcon} label="Remove Record" onClick={()=>{RemoveRecord(Developer,Date)}} />
+                                )}
                             </Cell>
                         </Row>
                     )}
                 />
             </TableTree>
-             <Button style={{float:'right',marginTop:'10px',marginRight:'10px'}}  appearance="primary" aria-haspopup="dialog" onClick={openModal}>Add Time Off</Button>
-
-            <TimeOffModal isOpen={isOpen} dispatch={dispatch} closeModal={closeModal} setDevList={setDevList}/>
+             {!readOnly && (
+                 <>
+                     <Button style={{float:'right',marginTop:'10px',marginRight:'10px'}}  appearance="primary" aria-haspopup="dialog" onClick={openModal}>Add Time Off</Button>
+                     <TimeOffModal isOpen={isOpen} dispatch={dispatch} closeModal={closeModal} setDevList={setDevList}/>
+                 </>
+             )}
 			
         </>
     );

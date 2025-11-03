@@ -1,5 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { fetchSelectedEpics, fetchAvailableEpics, ProcessEpic, SaveSelectedEpics } from '../thunks/EpicsThunks';
+import { fetchSelectedEpics, fetchAvailableEpics, ProcessEpic, SaveSelectedEpics, fetchCurrentUser, fetchUserRole, updateUserRole } from '../thunks/EpicsThunks';
 import { convertToHours } from '../../Utils/ConversionTools';
 import { groupByDevs } from '../../Utils/GroupingTools';
 import { HandleDevStacks } from './Functions/DevStack';
@@ -8,7 +8,7 @@ const epicsSlice = createSlice({
   name: 'epics',
   initialState: {
     Available: null,
-    Selected: null,
+    Selected: [], // Initialize as empty array instead of null
     data: null,
     issues: null,
     Developers: null,
@@ -20,18 +20,40 @@ const epicsSlice = createSlice({
     error: null,
     reloadCounter: 0,
     AllDevStacksLoaded:false,
-    Holidays:null
+    Holidays:null,
+    // User management
+    currentUser: null,
+    userRole: 'Developer', // Default role
+    isUserLoading: false
   },
   reducers: {
     setDevelopers(state, action) {
-      state.loaded = false;
       state.Developers = action.payload;
+      console.log('setDevelopers called:', {
+        developersCount: action.payload?.length || 0,
+        dataLength: state.data?.length || 0,
+        selectedLength: state.Selected?.length || 0,
+        allHaveDevelopers: state.data?.every(x => x.Developers != null) || false
+      });
+      
+      // Set loaded to true if we have data, all epics have developers, and we have developers
       if (state.data && 
           state.data.length > 0 && 
           state.data.every(x => x.Developers != null) && 
-          state.data.length === state.Selected.length && 
+          state.data.length === (state.Selected?.length || 0) && 
+          state.Developers && 
           state.Developers.length > 0) {
+        console.log('setDevelopers: Setting loaded = true');
         state.loaded = true;
+      } else {
+        console.log('setDevelopers: Conditions not met for loaded = true', {
+          hasData: !!state.data,
+          dataLength: state.data?.length || 0,
+          selectedLength: state.Selected?.length || 0,
+          allHaveDevelopers: state.data?.every(x => x.Developers != null) || false,
+          hasDevelopers: !!state.Developers,
+          developersLength: state.Developers?.length || 0
+        });
       }
     },
     reOrderEpics(state, action) {
@@ -42,22 +64,46 @@ const epicsSlice = createSlice({
     setHolidays(state, action) {
       state.Holidays = action.payload;
     },
+    setCurrentUser(state, action) {
+      state.currentUser = action.payload;
+    },
+    setUserRole(state, action) {
+      state.userRole = action.payload;
+    },
     setEpicDevStack(state,action){
         HandleDevStacks(state);
     },
     setEpicDevelopers(state, action) {
-      state.loaded = false;
       const epic = state.data?.find(x => x.EpicKey === action.payload.EpicKey);
       if (epic) {
         epic.Developers = action.payload.Developers;
+        console.log(`setEpicDevelopers: Updated epic ${action.payload.EpicKey}`, {
+          hasDevelopers: !!epic.Developers,
+          allEpicsHaveDevelopers: state.data?.every(x => x.Developers != null) || false,
+          hasGlobalDevelopers: !!state.Developers,
+          developersLength: state.Developers?.length || 0
+        });
       }
       
+      // Check if we should set loaded = true
       if (state.data && 
+          state.data.length > 0 &&
           state.data.every(x => x.Developers != null) && 
           state.Developers && 
-          state.Developers.length > 0) {
+          state.Developers.length > 0 &&
+          state.data.length === (state.Selected?.length || 0)) {
         state.DevelopersFull = groupByDevs(state.issues,'dev');
+        console.log('setEpicDevelopers: Setting loaded = true');
         state.loaded = true;
+      } else {
+        console.log('setEpicDevelopers: Conditions not met for loaded = true', {
+          hasData: !!state.data,
+          dataLength: state.data?.length || 0,
+          selectedLength: state.Selected?.length || 0,
+          allHaveDevelopers: state.data?.every(x => x.Developers != null) || false,
+          hasDevelopers: !!state.Developers,
+          developersLength: state.Developers?.length || 0
+        });
       }
     },
     setIssueData(state, action) {
@@ -93,6 +139,15 @@ const epicsSlice = createSlice({
         if (state.Selected?.length > 0 && totalIssues === state.issues.length) {
           state.AllIssuesLoaded = true;
         }
+        
+        // Update loaded state when we have data and issues
+        if (state.data && state.data.length > 0 && state.issues && state.issues.length > 0) {
+          // Check if all epics have been processed (have Developers assigned)
+          const allEpicsHaveDevelopers = state.data.every(x => x.Developers != null);
+          if (allEpicsHaveDevelopers && state.Developers && state.Developers.length > 0) {
+            state.loaded = true;
+          }
+        }
       }
     },
     setDevHours(state, action) {
@@ -123,10 +178,12 @@ const epicsSlice = createSlice({
     });
     builder.addCase(fetchSelectedEpics.fulfilled, (state, action) => {
       //state.DropDown.isLoadingSelected = false;
-      state.Selected = action.payload;
+      // Ensure Selected is always an array
+      state.Selected = Array.isArray(action.payload) ? action.payload : [];
     });
     builder.addCase(fetchSelectedEpics.rejected, (state, action) => {
       //state.DropDown.isLoadingSelected = false;
+      state.Selected = []; // Set to empty array on error
       state.error = action.error;
     });
 
@@ -136,10 +193,12 @@ const epicsSlice = createSlice({
     });
     builder.addCase(SaveSelectedEpics.fulfilled, (state, action) => {
       //state.DropDown.isLoadingSelected = false;
+      state.Selected = Array.isArray(action.payload) ? action.payload : [];
       state.data = null;
       state.issues = [];
       state.Developers = [];
       state.DevelopersFull = [];
+      state.loaded = false;
       state.AllDevStacksLoaded = false;
       state.reloadCounter++;
       //state.reload = true;
@@ -167,7 +226,31 @@ const epicsSlice = createSlice({
       state.error = action.error;
     });
 
+           // User management
+           builder.addCase(fetchCurrentUser.pending, (state) => {
+             state.isUserLoading = true;
+             state.currentUser = null;
+           });
+           builder.addCase(fetchCurrentUser.fulfilled, (state, action) => {
+             state.currentUser = action.payload;
+             state.isUserLoading = false;
+             state.error = null;
+           });
+           builder.addCase(fetchCurrentUser.rejected, (state, action) => {
+             state.isUserLoading = false;
+             state.currentUser = null;
+             state.error = action.error;
+           });
+
+    builder.addCase(fetchUserRole.fulfilled, (state, action) => {
+      state.userRole = action.payload;
+    });
+
+    builder.addCase(updateUserRole.fulfilled, (state, action) => {
+      // Role updated successfully - could refresh user list if needed
+    });
+
   }
 });
-export const { setDevelopers, setEpicDevelopers, setIssueData, setDevHours, reOrderEpics,setEpicDevStack,setHolidays } = epicsSlice.actions;
+export const { setDevelopers, setEpicDevelopers, setIssueData, setDevHours, reOrderEpics,setEpicDevStack,setHolidays, setCurrentUser, setUserRole } = epicsSlice.actions;
 export const epicsReducer = epicsSlice.reducer;

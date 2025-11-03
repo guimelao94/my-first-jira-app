@@ -2,7 +2,7 @@
  * @jsxRuntime classic
  */
 /** @jsx jsx */
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { jsx } from '@emotion/react';
 
@@ -26,15 +26,15 @@ import {
 } from '@atlaskit/side-navigation';
 
 import { Content, LeftSidebar, Main, PageLayout, TopNavigation } from '@atlaskit/page-layout';
-import { Box } from '@atlaskit/primitives';
+import { Box, xcss } from '@atlaskit/primitives';
 import { DeveloperTable } from './DeveloperTable';
 import { useDispatch, useSelector } from 'react-redux';
 import { HandleEpicThunks } from './ThunkHandlers';
+import { fetchCurrentUser, fetchUserRole } from '../store';
 import Spinner from '@atlaskit/spinner';
-import BasicGrid from './BasicGrid';
-import { EpicCard } from './EpicCard/EpicCard';
 import { TimeOffTable } from './TimeOffTable';
 import { HolidaysTable } from './HolidaysTable';
+import RoleBasedView from './RoleBasedView';
 
 export const ProductLayout = ({ children }) => {
 	const [isLoading, setIsLoading] = useState(false);
@@ -48,18 +48,54 @@ export const ProductLayout = ({ children }) => {
 	const data = useSelector((state) => state.epics.data);
 	const available = useSelector((state) => state.epics.Available);
 	const loaded = useSelector((state) => state.epics.loaded);
+	const currentUser = useSelector((state) => state.epics.currentUser);
+	const userRole = useSelector((state) => state.epics.userRole);
+	const isUserLoading = useSelector((state) => state.epics.isUserLoading);
+
+	// Fetch user info on mount
+	useEffect(() => {
+		let isMounted = true;
+		const initializeUser = async () => {
+			try {
+				setIsLoading(true);
+				setError(null);
+				// Fetch user first - wait for it to complete
+				const userResult = await dispatch(fetchCurrentUser());
+				// Only fetch role if we got a valid user with accountId
+				if (isMounted && userResult?.payload?.accountId) {
+					await dispatch(fetchUserRole());
+				}
+			} catch (err) {
+				if (isMounted) {
+					console.error('Error initializing user:', err);
+					setError(err.message || 'Failed to initialize user');
+				}
+			} finally {
+				if (isMounted) {
+					setIsLoading(false);
+				}
+			}
+		};
+		initializeUser();
+		return () => {
+			isMounted = false;
+		};
+	}, [dispatch]);
 
 	useEffect(() => {
-		const currentState = { reloadCounter };
-		HandleEpicThunks(dispatch, 'FullRefresh', currentState);
-	}, [dispatch, reloadCounter]);
+		// Only fetch epics after user is loaded and has accountId
+		if (currentUser?.accountId && !isUserLoading) {
+			const currentState = { reloadCounter };
+			HandleEpicThunks(dispatch, 'FullRefresh', currentState, currentUser.accountId);
+		}
+	}, [dispatch, reloadCounter, currentUser?.accountId, isUserLoading]);
 
 	useEffect(() => {
 		if (saveDevCounter > 0) {
 			const currentState = { SaveDevCounter: saveDevCounter };
-			HandleEpicThunks(dispatch, 'EpicRefresh', currentState);
+			HandleEpicThunks(dispatch, 'EpicRefresh', currentState, currentUser?.accountId);
 		}
-	}, [dispatch, saveDevCounter]);
+	}, [dispatch, saveDevCounter, currentUser]);
 
 	if (isLoading) {
 		return <div>Loading...</div>
@@ -78,7 +114,7 @@ export const ProductLayout = ({ children }) => {
 				<TopNavigationContents />
 			</TopNavigation>
 			<Content testId="content">
-				{(selected && selected.length > 0) && <LeftSidebar
+				{(Array.isArray(selected) && selected.length > 0 && currentUser?.accountId && !isUserLoading) && <LeftSidebar
 					isFixed={false}
 					width={450}
 					id="project-navigation"
@@ -91,13 +127,18 @@ export const ProductLayout = ({ children }) => {
 					<SideNavigationContent />
 				</LeftSidebar>}
 				<Main id="main-content" skipLinkTitle="Main Content">
-					<BasicGrid>
-						{
-							data && available && selected && data.map((item) => (
-								<EpicCard key={item.EpicKey} epicKey={item.EpicKey} />
-							))
-						}
-					</BasicGrid>
+					{error ? (
+						<Box xcss={xcss({ padding: 'space.400', textAlign: 'center' })}>
+							<p>Error: {error}</p>
+							<p>Please refresh the page.</p>
+						</Box>
+					) : isUserLoading ? (
+						<Box xcss={xcss({ padding: 'space.400', display: 'flex', justifyContent: 'center' })}>
+							<Spinner size="large" />
+						</Box>
+					) : (
+						<RoleBasedView />
+					)}
 				</Main>
 			</Content>
 		</PageLayout>
@@ -125,27 +166,35 @@ function TopNavigationContents() {
 const SideNavigationContent = ({ }) => {
 	const developers = useSelector((state) => state.epics.Developers);
 	const holidays = useSelector((state) => state.epics.Holidays);
+	const userRole = useSelector((state) => state.epics.userRole);
+	const isAdmin = userRole === 'Admin';
+	const isManager = userRole === 'Manager';
+	
 	return (
 		<SideNavigation label="Project navigation" testId="side-navigation">
-			<NavigationHeader>
-				<Header description="Use this section to indicate how many hours each developer is available to work on the selected epics">Developer Time Allocation</Header>
-			</NavigationHeader>
-			<Box>
-				{(developers && developers.length > 0) ? <DeveloperTable /> : <Spinner size={'large'} />}
-			</Box>
+			{isAdmin && (
+				<>
+					<NavigationHeader>
+						<Header description="Use this section to indicate how many hours each developer is available to work on the selected epics">Developer Time Allocation</Header>
+					</NavigationHeader>
+					<Box>
+						{(developers && developers.length > 0) ? <DeveloperTable /> : <Spinner size={'large'} />}
+					</Box>
+				</>
+			)}
 
 			<NavigationHeader>
 				<Header description="Scheduled developer time off">Developer Time Off</Header>
 			</NavigationHeader>
 			<Box>
-				{(developers && developers.length > 0) ? <TimeOffTable /> : <Spinner size={'large'} />}
+				{(developers && developers.length > 0) ? <TimeOffTable readOnly={isManager} /> : <Spinner size={'large'} />}
 			</Box>
 
 			<NavigationHeader>
 				<Header description="Holidays">Holidays</Header>
 			</NavigationHeader>
 			<Box>
-				{(developers && developers.length > 0) ? <HolidaysTable /> : <Spinner size={'large'} />}
+				{(developers && developers.length > 0) ? <HolidaysTable readOnly={isManager} /> : <Spinner size={'large'} />}
 			</Box>
 		</SideNavigation>
 	);
