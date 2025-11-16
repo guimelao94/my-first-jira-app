@@ -1,6 +1,6 @@
 import React, { memo, useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { Box } from '@atlaskit/primitives';
+import { Box, Grid } from '@atlaskit/primitives';
 import { EpicCard } from './EpicCard/EpicCard';
 import { UserManagement } from './UserManagement';
 import { EpicList } from './EpicList';
@@ -10,6 +10,7 @@ import Lozenge from '@atlaskit/lozenge';
 import Spinner from '@atlaskit/spinner';
 import Button from '@atlaskit/button/new';
 import './EpicGridOverride.css';
+import ResponsiveGrid from './ResponsiveGrid';
 
 const RoleBasedView = () => {
     const userRole = useSelector((state) => state.epics.userRole);
@@ -103,14 +104,17 @@ const RoleBasedView = () => {
                             <BootstrapAdmin />
                             <UserManagement />
                         </>
-                    )}
+                    )}                    
+
                     <Box xcss={xcss({ marginTop: 'space.400' })}>
                         <h2 style={{ fontWeight: 'bold', margin: 0 }}>Epic Selection</h2>
                         <Box xcss={xcss({ marginTop: 'space.200' })}>
                             <EpicList />
                         </Box>
                     </Box>
-                    <div style={{ marginTop: '24px' }}>
+
+
+                    <div style={{ marginTop: '24px', width: '100%', maxWidth: '100%' }}>
                         <h2 style={{ fontWeight: 'bold', margin: 0 }}>All Epics</h2>
                         {console.log('RoleBasedView - All Epics render (before condition):', {
                             loaded,
@@ -125,35 +129,36 @@ const RoleBasedView = () => {
                                 <Spinner size="medium" />
                             </Box>
                         ) : loaded && data && Array.isArray(data) && data.length > 0 ? (
-                            <div
+                            <Grid
                                 id="epic-grid-all-epics"
                                 className="epic-grid-container"
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(3, 1fr)',
-                                    gap: '16px',
-                                    width: '100%',
-                                    marginTop: '16px',
-                                    alignItems: 'start',
-                                    boxSizing: 'border-box',
-                                    position: 'relative'
-                                }}
-                            >
-                                {console.log('RoleBasedView - Rendering EpicCards, data:', data)}
-                                {console.log('RoleBasedView - First epic structure:', data[0] ? Object.keys(data[0]) : 'no data')}
-                                {data.map((epic) => {
-                                    console.log('RoleBasedView - Rendering epic:', epic?.EpicKey, epic);
-                                    if (!epic || !epic.EpicKey) {
-                                        console.error('RoleBasedView - Invalid epic:', epic);
-                                        return null;
-                                    }
-                                    return (
-                                        <div key={epic.EpicKey} style={{ minWidth: 0, width: '100%', boxSizing: 'border-box' }}>
-                                            <EpicCard epicKey={epic.EpicKey} />
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                gap="space.200"
+                                alignItems="start"
+                                templateAreas={[
+                                    'navigation navigation navigation navigation',
+                                    'content content content content',
+                                    'footer footer footer footer',
+                                ]}
+                            >                        
+                                <Box style={{ gridArea: 'content',backgroundColor:'rgba(9, 30, 66, 0.06)',width:'max-content' }}>
+                                    <ResponsiveGrid>
+                                    {console.log('RoleBasedView - Rendering EpicCards, data:', data)}
+                                    {console.log('RoleBasedView - First epic structure:', data[0] ? Object.keys(data[0]) : 'no data')}
+                                    {data.map((epic) => {
+                                        console.log('RoleBasedView - Rendering epic:', epic?.EpicKey, epic);
+                                        if (!epic || !epic.EpicKey) {
+                                            console.error('RoleBasedView - Invalid epic:', epic);
+                                            return null;
+                                        }
+                                        return (
+                                            <div key={epic.EpicKey} className="epic-card-wrapper" style={{ minWidth: 0, width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflow: 'visible' }}>
+                                                <EpicCard epicKey={epic.EpicKey} />
+                                            </div>
+                                        );
+                                    })}
+                                    </ResponsiveGrid>
+                                </Box>
+                            </Grid>
                         ) : (
                             <p>No epics selected</p>
                         )}
@@ -179,14 +184,18 @@ const RoleBasedView = () => {
                         ) : loaded && data && Array.isArray(data) && data.length > 0 ? (
                             <div
                                 id="epic-grid-manager"
+                                className="epic-grid-container"
                                 style={{
                                     display: 'grid',
-                                    gridTemplateColumns: 'repeat(3, 1fr)',
+                                    gridTemplateColumns: '1fr',
                                     gap: '16px',
                                     width: '100%',
+                                    maxWidth: '100%',
                                     marginTop: '16px',
                                     alignItems: 'start',
-                                    boxSizing: 'border-box'
+                                    boxSizing: 'border-box',
+                                    overflow: 'visible',
+                                    gridAutoFlow: 'row'
                                 }}
                             >
                                 {data.map((epic) => {
@@ -194,7 +203,7 @@ const RoleBasedView = () => {
                                         return null;
                                     }
                                     return (
-                                        <div key={epic.EpicKey} style={{ minWidth: 0, width: '100%', boxSizing: 'border-box' }}>
+                                        <div key={epic.EpicKey} className="epic-card-wrapper" style={{ minWidth: 0, width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflow: 'visible' }}>
                                             <EpicCard epicKey={epic.EpicKey} />
                                         </div>
                                     );
@@ -225,14 +234,18 @@ const RoleBasedView = () => {
                         ) : loaded && data && Array.isArray(data) && data.length > 0 ? (
                             <div
                                 id="epic-grid-developer"
+                                className="epic-grid-container"
                                 style={{
                                     display: 'grid',
-                                    gridTemplateColumns: 'repeat(3, 1fr)',
+                                    gridTemplateColumns: '1fr',
                                     gap: '16px',
                                     width: '100%',
+                                    maxWidth: '100%',
                                     marginTop: '16px',
                                     alignItems: 'start',
-                                    boxSizing: 'border-box'
+                                    boxSizing: 'border-box',
+                                    overflow: 'visible',
+                                    gridAutoFlow: 'row'
                                 }}
                             >
                                 {data.map((epic) => {
@@ -240,7 +253,7 @@ const RoleBasedView = () => {
                                         return null;
                                     }
                                     return (
-                                        <div key={epic.EpicKey} style={{ minWidth: 0, width: '100%', boxSizing: 'border-box' }}>
+                                        <div key={epic.EpicKey} className="epic-card-wrapper" style={{ minWidth: 0, width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflow: 'visible' }}>
                                             <EpicCard epicKey={epic.EpicKey} />
                                         </div>
                                     );

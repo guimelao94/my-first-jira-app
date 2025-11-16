@@ -38,6 +38,9 @@ export const EpicCard = memo(({ epicKey, style}) => {
         padding: 'space.050',
         backgroundColor: 'white',
         borderRadius: '6px',
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
         [media.above.xs]: {
             padding: 'space.100',
         },
@@ -71,7 +74,7 @@ export const EpicCard = memo(({ epicKey, style}) => {
     }
 
     return (
-        <Box xcss={cardStyles} style={style}>
+        <Box xcss={cardStyles} style={{ ...style, boxSizing: 'border-box' }}>
             <Inline space="space.200">
                 <Toggle
                     id="toggle-controlled"

@@ -1,15 +1,26 @@
+/* Force grid layout on epic containers */
 #epic-grid-all-epics,
 #epic-grid-manager,
 #epic-grid-developer,
 .epic-grid-container {
     display: grid !important;
-    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-columns: 1fr !important;
     gap: 16px !important;
     width: 100% !important;
+    max-width: 100% !important;
     align-items: start !important;
     margin-top: 16px !important;
     box-sizing: border-box !important;
     position: relative !important;
+    overflow: visible !important;
+    grid-auto-flow: row !important;
+}
+
+/* Ensure parent containers don't constrain width */
+#main-content > *,
+#main-content > * > * {
+    max-width: 100% !important;
+    width: 100% !important;
 }
 
 #epic-grid-all-epics > div,
@@ -17,8 +28,20 @@
 #epic-grid-developer > div,
 .epic-grid-container > div {
     min-width: 0 !important;
-    width: 100% !important;
+    max-width: 100% !important;
     box-sizing: border-box !important;
     display: block !important;
+    overflow: visible !important;
+}
+
+/* Force EpicCard to fit within grid cell */
+#epic-grid-all-epics .epic-card-wrapper,
+#epic-grid-manager .epic-card-wrapper,
+#epic-grid-developer .epic-card-wrapper,
+.epic-grid-container .epic-card-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
 }
 
