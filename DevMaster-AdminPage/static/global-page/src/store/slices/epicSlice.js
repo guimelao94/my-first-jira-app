@@ -124,6 +124,7 @@ const epicsSlice = createSlice({
         
         if (epic) {
           const payloadIssues = action.payload;
+          console.log(payloadIssues);
           epic.TimeRemaining = convertToHours(payloadIssues.reduce((total, item) => total + (item['remainingTime'] || 0), 0));
           epic.TimeSpent = convertToHours(payloadIssues.reduce((total, item) => total + (item['timespent'] || 0), 0));
           epic.OriginalEstimate = convertToHours(payloadIssues.reduce((total, item) => total + (item['originalestimate'] || 0), 0));

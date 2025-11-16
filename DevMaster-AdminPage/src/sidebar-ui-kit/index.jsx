@@ -11,6 +11,7 @@ const App = () => {
     const [isViewOverflowOpen, setIsViewOverflowOpen] = useState(false);
     const [timeSpent, setTimeSpent] = useState("");
     const [description, setDescription] = useState("");
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // Format: YYYY-MM-DD
     const [developer, setDeveloper] = useState(null);
     const [isCompleted, setIsCompleted] = useState(false);
     const openAddOverflowModal = () => setIsAddOverflowOpen(true);
@@ -66,7 +67,8 @@ const App = () => {
             TimeSpent: timeSpent * 3600,
             Description: description,
             Developer: {FullName:Developer.displayName,AccountID:context.accountId},
-            TimeStamp: (new Date()).toLocaleString()
+            Date: date, // Use the selected date instead of timestamp
+            TimeStamp: (new Date()).toLocaleString() // Keep for backward compatibility
         }
         console.log(Developer);
         var issue = null;
@@ -99,6 +101,7 @@ const App = () => {
         console.log(submission);
         setTimeSpent('');
         setDescription('');
+        setDate(new Date().toISOString().split('T')[0]); // Reset to today's date
         setIsAddOverflowOpen(false);
     }
     const [context, setContext] = useState(null);
@@ -155,22 +158,17 @@ const App = () => {
             <Box xcss={xcss({ marginBottom: 'space.200' })}>
                 <Checkbox value="checked" label="Completed" onChange={updateIsCompleted}  isChecked={isCompleted} />
             </Box>
-            <Inline>
-                <Box xcss={xcss({ marginLeft: 'space.200', float:'left' })}>
-                    <Button appearance="primary" onClick={openAddOverflowModal}>
-                        Add Overflow
-                    </Button>
-                </Box>
-
-                <Box xcss={xcss({ marginLeft: 'space.200', float:'right' })}>
-                    <Button appearance="primary" onClick={openViewOverflowModal}>
-                        View Overflow
-                    </Button>
-                </Box>
+            <Inline space="space.200">
+                <Button appearance="primary" onClick={openAddOverflowModal}>
+                    Add Overflow
+                </Button>
+                <Button appearance="primary" onClick={openViewOverflowModal}>
+                    View Overflow
+                </Button>
             </Inline>
 
 
-           {isAddOverflowOpen && <AddOverflowModal timeSpent={timeSpent} description={description} setTimeSpent={setTimeSpent} setDescription={setDescription} context={context} isOpen={isAddOverflowOpen} closeModal={closeAddOverflowModal} />} 
+           {isAddOverflowOpen && <AddOverflowModal timeSpent={timeSpent} description={description} date={date} setTimeSpent={setTimeSpent} setDescription={setDescription} setDate={setDate} context={context} isOpen={isAddOverflowOpen} closeModal={closeAddOverflowModal} />} 
            {isViewOverflowOpen && <ViewOverflowModal IssueKey={context.extension.issue.key} isOpen={isViewOverflowOpen} closeModal={closeViewOverflowModal} />} 
 
         </>

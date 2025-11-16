@@ -5,6 +5,7 @@ import { EpicCard } from './EpicCard/EpicCard';
 import { UserManagement } from './UserManagement';
 import { EpicList } from './EpicList';
 import { BootstrapAdmin } from './BootstrapAdmin';
+import { TotalRemainingTimePerDev } from './TotalRemainingTimePerDev';
 import { xcss } from '@atlaskit/primitives';
 import Lozenge from '@atlaskit/lozenge';
 import Spinner from '@atlaskit/spinner';
@@ -113,6 +114,8 @@ const RoleBasedView = () => {
                         </Box>
                     </Box>
 
+                    {/* Total Remaining Time Per Developer Section */}
+                    <TotalRemainingTimePerDev />
 
                     <div style={{ marginTop: '24px', width: '100%', maxWidth: '100%' }}>
                         <h2 style={{ fontWeight: 'bold', margin: 0 }}>All Epics</h2>

@@ -113,7 +113,7 @@ const FillIssueData = async ({ item, index }) => {
     invoke('Storage.GetData', { key: item.key })
   ]);
 
-  // Process worklogs
+  // Process worklogs - store full worklog data for date filtering
   const workLogsMap = (worklogResponse.worklogs || []).reduce((acc, worklog) => {
     const developer = worklog.author?.displayName;
     if (developer) {
@@ -125,6 +125,14 @@ const FillIssueData = async ({ item, index }) => {
   const workLogs = Object.entries(workLogsMap).map(([Developer, TimeSpent]) => ({ 
     Developer, 
     TimeSpent 
+  }));
+
+  // Store full worklog data for date filtering (created date and accountID)
+  const fullWorklogs = (worklogResponse.worklogs || []).map(worklog => ({
+    accountId: worklog.author?.accountId,
+    timeSpentSeconds: worklog.timeSpentSeconds || 0,
+    created: worklog.created,
+    started: worklog.started
   }));
 
   // Initialize storage if empty
@@ -162,6 +170,7 @@ const FillIssueData = async ({ item, index }) => {
     originalestimate: item.fields?.timeoriginalestimate || 0,
     overflowTime: customFields.Overflow || [],
     worklogs: workLogs,
+    fullWorklogs: fullWorklogs, // Store full worklog data for date filtering
     overflowCalculated
   };
 }
