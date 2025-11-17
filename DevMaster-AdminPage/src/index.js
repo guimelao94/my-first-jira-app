@@ -39,6 +39,12 @@ resolver.define('User.GetCurrentUser', UserContext.getCurrentUser);
 resolver.define('User.GetUserRole', UserContext.getUserRole);
 resolver.define('User.SetUserRole', UserContext.setUserRole);
 resolver.define('User.GetAllUsers', UserContext.getAllUsers);
+resolver.define('User.GetAllUserRoles', async ({ payload, context }) => {
+    return await UserContext.getAllUserRoles({ context });
+});
+resolver.define('User.RebuildUserRolesRegistry', async ({ payload, context }) => {
+    return await UserContext.rebuildUserRolesRegistry({ payload, context });
+});
 
 // Bootstrap resolvers
 resolver.define('Bootstrap.InitializeAdmin', async ({ payload, context }) => {

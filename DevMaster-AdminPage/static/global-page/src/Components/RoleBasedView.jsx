@@ -6,6 +6,7 @@ import { UserManagement } from './UserManagement';
 import { EpicList } from './EpicList';
 import { BootstrapAdmin } from './BootstrapAdmin';
 import { TotalRemainingTimePerDev } from './TotalRemainingTimePerDev';
+import { TimeTrackingValidation } from './TimeTrackingValidation';
 import { xcss } from '@atlaskit/primitives';
 import Lozenge from '@atlaskit/lozenge';
 import Spinner from '@atlaskit/spinner';
@@ -114,8 +115,20 @@ const RoleBasedView = () => {
                         </Box>
                     </Box>
 
-                    {/* Total Remaining Time Per Developer Section */}
-                    <TotalRemainingTimePerDev />
+                    {/* Total Remaining Time Per Developer and Time Tracking Validation - Side by Side */}
+                    <Grid
+                        gap="space.300"
+                        templateColumns="40% 60%"
+                        templateAreas={['left right']}
+                        xcss={xcss({ marginTop: 'space.400' })}
+                    >
+                        <Box xcss={xcss({ gridArea: 'left' })}>
+                            <TotalRemainingTimePerDev />
+                        </Box>
+                        <Box xcss={xcss({ gridArea: 'right' })}>
+                            <TimeTrackingValidation />
+                        </Box>
+                    </Grid>
 
                     <div style={{ marginTop: '24px', width: '100%', maxWidth: '100%' }}>
                         <h2 style={{ fontWeight: 'bold', margin: 0 }}>All Epics</h2>
@@ -228,6 +241,12 @@ const RoleBasedView = () => {
                             <EpicList />
                         </Box>
                     </Box>
+                    
+                    {/* Time Tracking Validation - Filtered for Developer */}
+                    <Box xcss={xcss({ marginTop: 'space.400' })}>
+                        <TimeTrackingValidation filterByCurrentUser={true} />
+                    </Box>
+                    
                     <Box xcss={xcss({ marginTop: 'space.400' })}>
                         <h2 style={{ fontWeight: 'bold', margin: 0 }}>My Epics</h2>
                         {!loaded ? (

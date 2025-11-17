@@ -38,6 +38,18 @@ export const Bootstrap = {
                     firstAdmin: accountId,
                     bootstrapAt: new Date().toISOString()
                 });
+                
+                // Add to user roles registry
+                const userRolesRegistryKey = 'UserRolesRegistry';
+                let accountIds = await forgeStorage.get(userRolesRegistryKey);
+                if (!accountIds || !Array.isArray(accountIds)) {
+                    accountIds = [];
+                }
+                if (!accountIds.includes(accountId)) {
+                    accountIds.push(accountId);
+                    await forgeStorage.set(userRolesRegistryKey, accountIds);
+                }
+                
                 return { isBootstrap: true, role: 'Admin' };
             }
 

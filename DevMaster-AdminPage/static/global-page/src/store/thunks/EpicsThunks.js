@@ -240,6 +240,30 @@ export const fetchAllUsers = createAsyncThunk('user/fetchAll', async () => {
     }
 });
 
+export const fetchAllUserRoles = createAsyncThunk('user/fetchAllRoles', async () => {
+    try {
+        const result = await invoke('User.GetAllUserRoles');
+        return result || [];
+    } catch (error) {
+        console.error('Error fetching all user roles:', error);
+        throw error;
+    }
+});
+
+export const rebuildUserRolesRegistry = createAsyncThunk('user/rebuildRegistry', async (payload) => {
+    try {
+        // Support both old format (just accountIds array) and new format (object with accountIds and userDetails)
+        const requestPayload = Array.isArray(payload) 
+            ? { accountIds: payload || [] }
+            : payload;
+        const result = await invoke('User.RebuildUserRolesRegistry', requestPayload);
+        return result;
+    } catch (error) {
+        console.error('Error rebuilding user roles registry:', error);
+        throw error;
+    }
+});
+
 const pause = (duration) =>{
     return new Promise((resolve)=>{
         setTimeout(resolve,duration);

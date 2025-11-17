@@ -127,12 +127,32 @@ const FillIssueData = async ({ item, index }) => {
     TimeSpent 
   }));
 
+  // Helper function to extract plain text from worklog comment (handles ADF format)
+  const extractCommentText = (comment) => {
+    if (!comment) return '';
+    if (typeof comment === 'string') return comment;
+    if (comment.content && Array.isArray(comment.content)) {
+      // ADF format - extract text from content array
+      const extractText = (content) => {
+        if (typeof content === 'string') return content;
+        if (content.text) return content.text;
+        if (content.content && Array.isArray(content.content)) {
+          return content.content.map(extractText).join('');
+        }
+        return '';
+      };
+      return comment.content.map(extractText).join('');
+    }
+    return '';
+  };
+
   // Store full worklog data for date filtering (created date and accountID)
   const fullWorklogs = (worklogResponse.worklogs || []).map(worklog => ({
     accountId: worklog.author?.accountId,
     timeSpentSeconds: worklog.timeSpentSeconds || 0,
     created: worklog.created,
-    started: worklog.started
+    started: worklog.started,
+    comment: extractCommentText(worklog.comment) // Store worklog description/comment for time range parsing
   }));
 
   // Initialize storage if empty

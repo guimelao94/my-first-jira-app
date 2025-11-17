@@ -1,0 +1,7 @@
+/* Reduce padding between columns in Time Tracking Validation table by 50% */
+.time-tracking-validation-table table td,
+.time-tracking-validation-table table th {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+}
+
