@@ -4,6 +4,84 @@ import { reOrderEpics, setDevelopers, setEpicDevelopers, setEpicDevStack, setHol
 import { groupByDevs } from "../Utils/GroupingTools";
 import { invoke, requestJira } from "@forge/bridge";
 
+// Simple delay helper for backoff
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Limit how many heavy requests run at once to avoid hitting Forge/Jira rate limits
+const processWithConcurrency = async (items, handler, concurrency = 3) => {
+  const results = new Array(items.length);
+  let index = 0;
+
+  const worker = async () => {
+    while (index < items.length) {
+      const currentIndex = index++;
+      try {
+        results[currentIndex] = await handler(items[currentIndex], currentIndex);
+      } catch (error) {
+        console.error('processWithConcurrency: handler failed', { currentIndex, error });
+        results[currentIndex] = null;
+      }
+    }
+  };
+
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, worker);
+  await Promise.all(workers);
+  return results;
+};
+
+// Retry helper for Forge invoke/request rate limits
+const retryOnRateLimit = async (fn, { retries = 3, baseDelay = 500, description = 'operation' } = {}) => {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      const message = (error?.message || '').toLowerCase();
+      const isRateLimit = message.includes('rate limit');
+      if (isRateLimit && attempt < retries) {
+        const retryDelay = baseDelay * Math.pow(2, attempt);
+        console.warn(`${description} rate limited, retrying in ${retryDelay}ms (attempt ${attempt + 1} of ${retries + 1})`);
+        await delay(retryDelay);
+        continue;
+      }
+      throw error;
+    }
+  }
+};
+
+const fetchWorklogsWithRetry = async (issueKey) => {
+  return retryOnRateLimit(async () => {
+    const response = await requestJira(`/rest/api/3/issue/${issueKey}/worklog`);
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers?.get('retry-after')) || 0;
+      const error = new Error(`rate limited fetching worklogs for ${issueKey}`);
+      if (retryAfter) {
+        // Respect Retry-After header when present
+        await delay(retryAfter * 1000);
+      }
+      throw error;
+    }
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Failed to fetch worklogs for ${issueKey}: ${response.status} ${body}`);
+    }
+    return response.json();
+  }, { description: `Fetch worklogs for ${issueKey}` });
+};
+
+const fetchStorageWithRetry = async (key) => {
+  return retryOnRateLimit(
+    () => invoke('Storage.GetData', { key }),
+    { description: `Fetch storage for ${key}` }
+  );
+};
+
+const saveStorageWithRetry = async (key, value) => {
+  return retryOnRateLimit(
+    () => invoke('Storage.SaveData', { key, value }),
+    { description: `Save storage for ${key}` }
+  );
+};
+
 export const HandleEpicThunks = async (dispatch, type = 'FullRefresh', epics, currentUserAccountId) => {
   let issueList = [];
   let selected = null;
@@ -77,13 +155,15 @@ export const HandleEpics = async (dispatch, selected, issueList) => {
       
       if (epic.payload && epic.payload.Issues) {
         console.log(`HandleEpics: Epic ${element} has ${epic.payload.Issues.length} issues`);
-        // Process issues in parallel for better performance
-        const issuePromises = epic.payload.Issues.map((issue, idx) => 
-          FillIssueData({ item: issue, index: idx })
+        // Process issues with a small concurrency limit to avoid rate limits
+        const epicIssues = await processWithConcurrency(
+          epic.payload.Issues,
+          (issue, idx) => FillIssueData({ item: issue, index: idx }),
+          3
         );
-        const epicIssues = await Promise.all(issuePromises);
+        const validEpicIssues = epicIssues.filter(Boolean);
         
-        issueList.push(...epicIssues);
+        issueList.push(...validEpicIssues);
         
         const epicIssuesFiltered = issueList.filter(x => x.EpicKey === epic.payload.EpicKey);
         await dispatch(setIssueData(epicIssuesFiltered));
@@ -109,8 +189,8 @@ const FillIssueData = async ({ item, index }) => {
 
   // Fetch worklogs and storage in parallel for better performance
   const [worklogResponse, storageData] = await Promise.all([
-    requestJira(`/rest/api/3/issue/${item.key}/worklog`).then(res => res.json()),
-    invoke('Storage.GetData', { key: item.key })
+    fetchWorklogsWithRetry(item.key),
+    fetchStorageWithRetry(item.key)
   ]);
 
   // Process worklogs - store full worklog data for date filtering
@@ -157,7 +237,7 @@ const FillIssueData = async ({ item, index }) => {
 
   // Initialize storage if empty
   if (!storageData || Object.keys(storageData).length === 0) {
-    await invoke('Storage.SaveData', { key: item.key, value: customFields });
+    await saveStorageWithRetry(item.key, customFields);
   } else {
     customFields = storageData;
   }
