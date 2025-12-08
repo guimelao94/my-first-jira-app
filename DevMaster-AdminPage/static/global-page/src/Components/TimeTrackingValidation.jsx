@@ -28,6 +28,7 @@ export const TimeTrackingValidation = ({ filterByCurrentUser = false }) => {
     const [processedCount, setProcessedCount] = useState(0);
     const [selectedTicketDetails, setSelectedTicketDetails] = useState(null); // For showing validation details modal
     const [currentPage, setCurrentPage] = useState(1);
+    const [groupByChangedBy, setGroupByChangedBy] = useState(false);
     const itemsPerPage = 10;
 
     // Track if component is mounted to prevent state updates after unmount
@@ -156,10 +157,13 @@ export const TimeTrackingValidation = ({ filterByCurrentUser = false }) => {
         // "from 11:31 AM to 12:00 PM"
         // "Worked from 8:06 pm - 9:24 pm"
         // "Worked from 8:30 am to 9:15 am"
+        // "Worked 8:39 am - 9:13 am" (without "from")
         // "Did peer review from 1:02 pm - 1:51 pm"
         const patterns = [
             /(?:worked\s+)?from\s+(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)\s*[-–—]\s*(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)/i,
-            /(?:worked\s+)?from\s+(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)\s+to\s+(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)/i
+            /(?:worked\s+)?from\s+(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)\s+to\s+(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)/i,
+            /worked\s+(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)\s*[-–—]\s*(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)/i,
+            /worked\s+(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)\s+to\s+(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)/i
         ];
         
         for (const pattern of patterns) {
@@ -599,6 +603,13 @@ export const TimeTrackingValidation = ({ filterByCurrentUser = false }) => {
         setSelectedTicketDetails(null);
     };
 
+    // Helper function to get epic name from EpicKey
+    const getEpicName = useCallback((epicKey) => {
+        if (!epicKey || !data || !Array.isArray(data)) return epicKey || 'N/A';
+        const epic = data.find(e => e.EpicKey === epicKey);
+        return epic?.Summary || epicKey || 'N/A';
+    }, [data]);
+
     // Filter results if filterByCurrentUser is true (must be before early return)
     const filteredResults = useMemo(() => {
         if (!filterByCurrentUser || !currentUser?.displayName) {
@@ -615,6 +626,41 @@ export const TimeTrackingValidation = ({ filterByCurrentUser = false }) => {
             );
         });
     }, [validationResults, filterByCurrentUser, currentUser?.displayName]);
+
+    // Group results by "Changed By" if grouping is enabled
+    const groupedResults = useMemo(() => {
+        if (!groupByChangedBy) {
+            return { ungrouped: filteredResults };
+        }
+        
+        // Group by entryAuthor (Changed By)
+        const groups = {};
+        filteredResults.forEach(result => {
+            const violations = Array.isArray(result.violations) ? result.violations : [];
+            // Get all unique entryAuthors from violations
+            const authors = new Set();
+            violations.forEach(v => {
+                if (v.entryAuthor) {
+                    authors.add(v.entryAuthor);
+                }
+            });
+            
+            // If no author found, use "Unknown"
+            if (authors.size === 0) {
+                authors.add('Unknown');
+            }
+            
+            // Add result to each author's group
+            authors.forEach(author => {
+                if (!groups[author]) {
+                    groups[author] = [];
+                }
+                groups[author].push(result);
+            });
+        });
+        
+        return groups;
+    }, [filteredResults, groupByChangedBy]);
 
     // Reset to page 1 when filtered results change
     // Use a stable dependency to avoid hook count issues
@@ -636,9 +682,18 @@ export const TimeTrackingValidation = ({ filterByCurrentUser = false }) => {
         <Box xcss={xcss({ marginTop: 'space.400', padding: 'space.200' })}>
             <Box xcss={xcss({ marginBottom: 'space.200', display: 'flex', justifyContent: 'space-between', alignItems: 'center' })}>
                 <h2 style={{ fontWeight: 'bold', margin: 0 }}>Time Tracking Validation</h2>
-                <Button appearance="primary" onClick={runValidation} isDisabled={isLoading}>
-                    {isLoading ? 'Validating...' : 'Refresh Validation'}
-                </Button>
+                <Box xcss={xcss({ display: 'flex', gap: 'space.100', alignItems: 'center' })}>
+                    <Button 
+                        appearance={groupByChangedBy ? "primary" : "default"}
+                        onClick={() => setGroupByChangedBy(!groupByChangedBy)}
+                        isDisabled={isLoading}
+                    >
+                        {groupByChangedBy ? 'Ungroup' : 'Group by Changed By'}
+                    </Button>
+                    <Button appearance="primary" onClick={runValidation} isDisabled={isLoading}>
+                        {isLoading ? 'Validating...' : 'Refresh Validation'}
+                    </Button>
+                </Box>
             </Box>
             
             <Box xcss={xcss({ marginBottom: 'space.200' })}>
@@ -739,98 +794,256 @@ export const TimeTrackingValidation = ({ filterByCurrentUser = false }) => {
                                 <Header width={150}>Last Update</Header>
                                 <Header width={100}>Actions</Header>
                             </Headers>
-                        <Rows
-                            items={filteredResults
-                                .filter(r => r && r.ticket && r.ticket.ticketNumber)
-                                .sort((a, b) => {
-                                    // Sort by lastupdate descending
-                                    const dateA = a.lastupdate ? new Date(a.lastupdate).getTime() : 0;
-                                    const dateB = b.lastupdate ? new Date(b.lastupdate).getTime() : 0;
-                                    return dateB - dateA; // Descending order
-                                })
-                                .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}
-                            render={(result) => {
-                                try {
-                                    if (!result || !result.ticket || !result.ticket.ticketNumber) {
+                        {groupByChangedBy ? (
+                            // Grouped view - flatten groups and results into a single list with type indicators
+                            <Rows
+                                items={Object.entries(groupedResults)
+                                    .sort(([a], [b]) => a.localeCompare(b))
+                                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                                    .flatMap(([author, results]) => {
+                                        const sortedResults = results
+                                            .filter(r => r && r.ticket && r.ticket.ticketNumber)
+                                            .sort((a, b) => {
+                                                const dateA = a.lastupdate ? new Date(a.lastupdate).getTime() : 0;
+                                                const dateB = b.lastupdate ? new Date(b.lastupdate).getTime() : 0;
+                                                return dateB - dateA;
+                                            });
+                                        
+                                        return [
+                                            { type: 'group', author, results: sortedResults },
+                                            ...(expandedTickets.has(author) ? sortedResults.map(r => ({ type: 'result', ...r })) : [])
+                                        ];
+                                    })}
+                                render={(item) => {
+                                    if (item.type === 'group') {
+                                        const { author, results: sortedResults } = item;
+                                        const isExpanded = expandedTickets.has(author);
+                                        
+                                        return (
+                                            <Row
+                                                key={author}
+                                                items={[]}
+                                                hasChildren={false}
+                                            >
+                                                <Cell width={150}>
+                                                    <Button
+                                                        appearance="subtle"
+                                                        onClick={() => toggleTicketExpansion(author)}
+                                                        style={{ padding: 0, textAlign: 'left', fontWeight: 'bold' }}
+                                                    >
+                                                        {isExpanded ? '▼' : '▶'} {author}
+                                                    </Button>
+                                                </Cell>
+                                                <Cell width={200}>
+                                                    <span style={{ color: '#6B778C', fontSize: '12px' }}>
+                                                        {sortedResults.length} ticket{sortedResults.length !== 1 ? 's' : ''}
+                                                    </span>
+                                                </Cell>
+                                                <Cell width={200}>
+                                                    <Lozenge appearance="inprogress">
+                                                        {sortedResults.reduce((sum, r) => sum + (r?.violations?.length || 0), 0)} total violation{sortedResults.reduce((sum, r) => sum + (r?.violations?.length || 0), 0) !== 1 ? 's' : ''}
+                                                    </Lozenge>
+                                                </Cell>
+                                                <Cell width={150}>
+                                                    {sortedResults.length > 0 && sortedResults[0].lastupdate ? (() => {
+                                                        try {
+                                                            const lastUpdateDate = new Date(sortedResults[0].lastupdate);
+                                                            if (isNaN(lastUpdateDate.getTime())) return 'N/A';
+                                                            return (
+                                                                <Box>
+                                                                    <div>{lastUpdateDate.toLocaleDateString()}</div>
+                                                                    <div style={{ fontSize: '12px', color: '#6B778C', marginTop: '4px' }}>
+                                                                        {lastUpdateDate.toLocaleTimeString()}
+                                                                    </div>
+                                                                </Box>
+                                                            );
+                                                        } catch (err) {
+                                                            return 'N/A';
+                                                        }
+                                                    })() : 'N/A'}
+                                                </Cell>
+                                                <Cell width={100}></Cell>
+                                            </Row>
+                                        );
+                                    } else {
+                                        // Child result row
+                                        const result = item;
+                                        try {
+                                            if (!result || !result.ticket || !result.ticket.ticketNumber) {
+                                                return null;
+                                            }
+                                            const violations = Array.isArray(result.violations) ? result.violations : [];
+                                            const ticketKey = result.ticket.ticketNumber;
+                                            
+                                            return (
+                                                <Row
+                                                    key={ticketKey}
+                                                    items={[]}
+                                                    hasChildren={false}
+                                                >
+                                                    <Cell width={150}>
+                                                        <span style={{ marginLeft: '20px' }}>
+                                                            <Button
+                                                                appearance="link"
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    if (result && result.ticket) {
+                                                                        showValidationDetails(result);
+                                                                    }
+                                                                }}
+                                                                style={{ 
+                                                                    padding: 0,
+                                                                    textAlign: 'left',
+                                                                    fontWeight: 'bold'
+                                                                }}
+                                                            >
+                                                                {result.ticket.ticketNumber}
+                                                            </Button>
+                                                        </span>
+                                                    </Cell>
+                                                    <Cell width={200}>
+                                                        {getEpicName(result.ticket.EpicKey)}
+                                                    </Cell>
+                                                    <Cell width={200}>
+                                                        <Lozenge appearance="removed">
+                                                            {violations.length} violation{violations.length !== 1 ? 's' : ''}
+                                                        </Lozenge>
+                                                    </Cell>
+                                                    <Cell width={150}>
+                                                        {result.lastupdate ? (() => {
+                                                            try {
+                                                                const lastUpdateDate = new Date(result.lastupdate);
+                                                                if (isNaN(lastUpdateDate.getTime())) return 'N/A';
+                                                                return (
+                                                                    <Box>
+                                                                        <div>{lastUpdateDate.toLocaleDateString()}</div>
+                                                                        <div style={{ fontSize: '12px', color: '#6B778C', marginTop: '4px' }}>
+                                                                            {lastUpdateDate.toLocaleTimeString()}
+                                                                        </div>
+                                                                    </Box>
+                                                                );
+                                                            } catch (err) {
+                                                                return 'N/A';
+                                                            }
+                                                        })() : 'N/A'}
+                                                    </Cell>
+                                                    <Cell width={100}>
+                                                        <Button 
+                                                            appearance="subtle" 
+                                                            onClick={() => {
+                                                                if (result && result.ticket && result.ticket.ticketNumber) {
+                                                                    showValidationDetails(result);
+                                                                }
+                                                            }}
+                                                        >
+                                                            View Details
+                                                        </Button>
+                                                    </Cell>
+                                                </Row>
+                                            );
+                                        } catch (err) {
+                                            console.error('Error rendering result row:', err, result);
+                                            return null;
+                                        }
+                                    }
+                                }}
+                            />
+                        ) : (
+                            // Ungrouped view
+                            <Rows
+                                items={filteredResults
+                                    .filter(r => r && r.ticket && r.ticket.ticketNumber)
+                                    .sort((a, b) => {
+                                        // Sort by lastupdate descending
+                                        const dateA = a.lastupdate ? new Date(a.lastupdate).getTime() : 0;
+                                        const dateB = b.lastupdate ? new Date(b.lastupdate).getTime() : 0;
+                                        return dateB - dateA; // Descending order
+                                    })
+                                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}
+                                render={(result) => {
+                                    try {
+                                        if (!result || !result.ticket || !result.ticket.ticketNumber) {
+                                            return null;
+                                        }
+                                        const violations = Array.isArray(result.violations) ? result.violations : [];
+                                        const ticketKey = result.ticket.ticketNumber;
+                                        
+                                        return (
+                                            <Row
+                                                key={ticketKey}
+                                                items={[]}
+                                                hasChildren={false}
+                                            >
+                                                <Cell width={150}>
+                                                    <Button
+                                                        appearance="link"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            if (result && result.ticket) {
+                                                                showValidationDetails(result);
+                                                            }
+                                                        }}
+                                                        style={{ 
+                                                            padding: 0,
+                                                            textAlign: 'left',
+                                                            fontWeight: 'bold'
+                                                        }}
+                                                    >
+                                                        {result.ticket.ticketNumber}
+                                                    </Button>
+                                                </Cell>
+                                                <Cell width={200}>
+                                                    {getEpicName(result.ticket.EpicKey)}
+                                                </Cell>
+                                                <Cell width={200}>
+                                                    <Lozenge appearance="removed">
+                                                        {violations.length} violation{violations.length !== 1 ? 's' : ''}
+                                                    </Lozenge>
+                                                </Cell>
+                                                <Cell width={150}>
+                                                    {result.lastupdate ? (() => {
+                                                        try {
+                                                            const lastUpdateDate = new Date(result.lastupdate);
+                                                            if (isNaN(lastUpdateDate.getTime())) return 'N/A';
+                                                            return (
+                                                                <Box>
+                                                                    <div>{lastUpdateDate.toLocaleDateString()}</div>
+                                                                    <div style={{ fontSize: '12px', color: '#6B778C', marginTop: '4px' }}>
+                                                                        {lastUpdateDate.toLocaleTimeString()}
+                                                                    </div>
+                                                                </Box>
+                                                            );
+                                                        } catch (err) {
+                                                            return 'N/A';
+                                                        }
+                                                    })() : 'N/A'}
+                                                </Cell>
+                                                <Cell width={100}>
+                                                    <Button 
+                                                        appearance="subtle" 
+                                                        onClick={() => {
+                                                            if (result && result.ticket && result.ticket.ticketNumber) {
+                                                                showValidationDetails(result);
+                                                            }
+                                                        }}
+                                                    >
+                                                        View Details
+                                                    </Button>
+                                                </Cell>
+                                            </Row>
+                                        );
+                                    } catch (err) {
+                                        console.error('Error rendering result row:', err, result);
                                         return null;
                                     }
-                                    const violations = Array.isArray(result.violations) ? result.violations : [];
-                                    const ticketKey = result.ticket.ticketNumber;
-                                    
-                                    return (
-                                        <Row
-                                            key={ticketKey}
-                                            items={[]}
-                                            hasChildren={false}
-                                        >
-                                            <Cell width={150}>
-                                                <Button
-                                                    appearance="link"
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        if (result && result.ticket) {
-                                                            showValidationDetails(result);
-                                                        }
-                                                    }}
-                                                    style={{ 
-                                                        padding: 0,
-                                                        textAlign: 'left',
-                                                        fontWeight: 'bold'
-                                                    }}
-                                                >
-                                                    {result.ticket.ticketNumber}
-                                                </Button>
-                                            </Cell>
-                                            <Cell width={200}>
-                                                {result.ticket.EpicKey || 'N/A'}
-                                            </Cell>
-                                            <Cell width={200}>
-                                                <Lozenge appearance="removed">
-                                                    {violations.length} violation{violations.length !== 1 ? 's' : ''}
-                                                </Lozenge>
-                                            </Cell>
-                                            <Cell width={150}>
-                                                {result.lastupdate ? (() => {
-                                                    try {
-                                                        const lastUpdateDate = new Date(result.lastupdate);
-                                                        if (isNaN(lastUpdateDate.getTime())) return 'N/A';
-                                                        return (
-                                                            <Box>
-                                                                <div>{lastUpdateDate.toLocaleDateString()}</div>
-                                                                <div style={{ fontSize: '12px', color: '#6B778C', marginTop: '4px' }}>
-                                                                    {lastUpdateDate.toLocaleTimeString()}
-                                                                </div>
-                                                            </Box>
-                                                        );
-                                                    } catch (err) {
-                                                        return 'N/A';
-                                                    }
-                                                })() : 'N/A'}
-                                            </Cell>
-                                            <Cell width={100}>
-                                                <Button 
-                                                    appearance="subtle" 
-                                                    onClick={() => {
-                                                        if (result && result.ticket && result.ticket.ticketNumber) {
-                                                            showValidationDetails(result);
-                                                        }
-                                                    }}
-                                                >
-                                                    View Details
-                                                </Button>
-                                            </Cell>
-                                        </Row>
-                                    );
-                                } catch (err) {
-                                    console.error('Error rendering result row:', err, result);
-                                    return null;
-                                }
-                            }}
-                        />
+                                }}
+                            />
+                        )}
                         </TableTree>
                     </div>
-                    {filteredResults.length > itemsPerPage && (
+                    {(groupByChangedBy ? Object.keys(groupedResults).length : filteredResults.length) > itemsPerPage && (
                         <Box xcss={xcss({ marginTop: 'space.200', display: 'flex', justifyContent: 'space-between', alignItems: 'center' })}>
                             <Box xcss={xcss({ display: 'flex', gap: 'space.100', alignItems: 'center' })}>
                                 <Button 
@@ -841,18 +1054,20 @@ export const TimeTrackingValidation = ({ filterByCurrentUser = false }) => {
                                     Previous
                                 </Button>
                                 <span style={{ color: '#6B778C' }}>
-                                    Page {currentPage} of {Math.ceil(filteredResults.length / itemsPerPage)}
+                                    Page {currentPage} of {Math.ceil((groupByChangedBy ? Object.keys(groupedResults).length : filteredResults.length) / itemsPerPage)}
                                 </span>
                                 <Button 
                                     appearance="subtle"
-                                    isDisabled={currentPage >= Math.ceil(filteredResults.length / itemsPerPage)}
-                                    onClick={() => setCurrentPage(prev => Math.min(Math.ceil(filteredResults.length / itemsPerPage), prev + 1))}
+                                    isDisabled={currentPage >= Math.ceil((groupByChangedBy ? Object.keys(groupedResults).length : filteredResults.length) / itemsPerPage)}
+                                    onClick={() => setCurrentPage(prev => Math.min(Math.ceil((groupByChangedBy ? Object.keys(groupedResults).length : filteredResults.length) / itemsPerPage), prev + 1))}
                                 >
                                     Next
                                 </Button>
                             </Box>
                             <span style={{ color: '#6B778C', fontSize: '12px' }}>
-                                Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredResults.length)} of {filteredResults.length} violations
+                                {groupByChangedBy 
+                                    ? `Showing ${((currentPage - 1) * itemsPerPage) + 1}-${Math.min(currentPage * itemsPerPage, Object.keys(groupedResults).length)} of ${Object.keys(groupedResults).length} groups`
+                                    : `Showing ${((currentPage - 1) * itemsPerPage) + 1}-${Math.min(currentPage * itemsPerPage, filteredResults.length)} of ${filteredResults.length} violations`}
                             </span>
                         </Box>
                     )}
@@ -886,7 +1101,7 @@ export const TimeTrackingValidation = ({ filterByCurrentUser = false }) => {
                                     <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>Ticket Information:</p>
                                     <p style={{ margin: 0, color: '#6B778C' }}>
                                         <strong>Ticket:</strong> {selectedTicketDetails?.ticket?.ticketNumber || 'N/A'}<br/>
-                                        <strong>Epic:</strong> {selectedTicketDetails?.ticket?.EpicKey || 'N/A'}<br/>
+                                        <strong>Epic:</strong> {getEpicName(selectedTicketDetails?.ticket?.EpicKey)}<br/>
                                         <strong>Current Status:</strong> {selectedTicketDetails?.ticket?.status || 'N/A'}<br/>
                                         <strong>Violations Found:</strong> {Array.isArray(selectedTicketDetails?.violations) ? selectedTicketDetails.violations.length : 0}
                                     </p>
