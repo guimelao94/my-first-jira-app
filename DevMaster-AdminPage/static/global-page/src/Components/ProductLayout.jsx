@@ -47,7 +47,6 @@ export const ProductLayout = ({ children }) => {
 	const selected = useSelector((state) => state.epics.Selected);
 	const data = useSelector((state) => state.epics.data);
 	const available = useSelector((state) => state.epics.Available);
-	const loaded = useSelector((state) => state.epics.loaded);
 	const currentUser = useSelector((state) => state.epics.currentUser);
 	const userRole = useSelector((state) => state.epics.userRole);
 	const isUserLoading = useSelector((state) => state.epics.isUserLoading);
@@ -166,6 +165,7 @@ function TopNavigationContents() {
 const SideNavigationContent = ({ }) => {
 	const developers = useSelector((state) => state.epics.Developers);
 	const holidays = useSelector((state) => state.epics.Holidays);
+	const loaded = useSelector((state) => state.epics.loaded);
 	const userRole = useSelector((state) => state.epics.userRole);
 	const isAdmin = userRole === 'Admin';
 	const isManager = userRole === 'Manager';
@@ -178,7 +178,7 @@ const SideNavigationContent = ({ }) => {
 						<Header description="Use this section to indicate how many hours each developer is available to work on the selected epics">Developer Time Allocation</Header>
 					</NavigationHeader>
 					<Box>
-						{(developers && developers.length > 0) ? <DeveloperTable /> : <Spinner size={'large'} />}
+						{!loaded ? <Spinner size={'large'} /> : <DeveloperTable />}
 					</Box>
 				</>
 			)}
@@ -187,14 +187,14 @@ const SideNavigationContent = ({ }) => {
 				<Header description="Scheduled developer time off">Developer Time Off</Header>
 			</NavigationHeader>
 			<Box>
-				{(developers && developers.length > 0) ? <TimeOffTable readOnly={isManager} /> : <Spinner size={'large'} />}
+				{!loaded ? <Spinner size={'large'} /> : <TimeOffTable readOnly={isManager} />}
 			</Box>
 
 			<NavigationHeader>
 				<Header description="Holidays">Holidays</Header>
 			</NavigationHeader>
 			<Box>
-				{(developers && developers.length > 0) ? <HolidaysTable readOnly={isManager} /> : <Spinner size={'large'} />}
+				{!loaded ? <Spinner size={'large'} /> : <HolidaysTable readOnly={isManager} />}
 			</Box>
 		</SideNavigation>
 	);

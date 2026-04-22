@@ -1,8 +1,29 @@
 import { invoke, requestJira } from "@forge/bridge";
 import { createAsyncThunk } from "@reduxjs/toolkit";
+import { createTransientError, delay, retryBridgeOperation } from "../../Utils/BridgeRetry";
 
 // Helper to fetch all pages using nextPageToken
-const searchAllIssues = async ({ jql, fields = ['*all'], maxResults = 1000 }) => {
+const requestJiraWithRetry = async (url, options = undefined, description = 'requestJira call') => {
+    return retryBridgeOperation(async () => {
+        const response = await requestJira(url, options);
+
+        if (response.status === 429) {
+            const retryAfter = Number(response.headers?.get('retry-after')) || 0;
+            if (retryAfter > 0) {
+                await delay(retryAfter * 1000);
+            }
+            throw createTransientError(`Rate limited during ${description}`, { status: response.status });
+        }
+
+        if (response.status >= 500) {
+            throw createTransientError(`Temporary Jira error during ${description}`, { status: response.status });
+        }
+
+        return response;
+    }, { description });
+};
+
+const searchAllIssues = async ({ jql, fields = [], maxResults = 1000 }) => {
     let issues = [];
     let nextPageToken = null;
     let total = null;
@@ -19,7 +40,11 @@ const searchAllIssues = async ({ jql, fields = ['*all'], maxResults = 1000 }) =>
             params.push(`nextPageToken=${encodeURIComponent(nextPageToken)}`);
         }
 
-        const res = await requestJira(`/rest/api/3/search/jql?${params.join('&')}`);
+        const res = await requestJiraWithRetry(
+            `/rest/api/3/search/jql?${params.join('&')}`,
+            undefined,
+            `search issues for JQL "${jql}"`
+        );
         if (!res.ok) {
             const text = await res.text();
             throw new Error(`JQL search failed: ${res.status} ${text}`);
@@ -34,17 +59,45 @@ const searchAllIssues = async ({ jql, fields = ['*all'], maxResults = 1000 }) =>
     return { issues, total: total ?? issues.length };
 };
 
-export const fetchAvailableEpics = createAsyncThunk('epics/fetchAvailable',async ()=>{
-    const result = await searchAllIssues({
-        jql: 'issueType = Epic ORDER BY updated DESC',
-        maxResults: 1000,
-        fields: ['*all']
-    });
+const mapIssuesToSelectOptions = (issues = []) => {
+    return issues
+        .filter((item) => item?.key)
+        .map((item) => ({
+            label: item.key,
+            value: item.key
+        }));
+};
 
-    return result.issues.map((item) => ({
-        label: item.key,
-        value: item.key
-    }));
+export const fetchAvailableEpics = createAsyncThunk('epics/fetchAvailable',async ()=>{
+    try {
+        const result = await searchAllIssues({
+            jql: 'issueType = Epic ORDER BY updated DESC',
+            maxResults: 1000,
+            fields: ['summary']
+        });
+
+        const options = mapIssuesToSelectOptions(result.issues);
+        if (options.length > 0) {
+            return options;
+        }
+        console.warn('fetchAvailableEpics: enhanced search returned no epics, falling back to direct search');
+    } catch (error) {
+        console.warn('fetchAvailableEpics: enhanced search failed, falling back to direct search', error);
+    }
+
+    const fallbackResponse = await requestJiraWithRetry(
+        '/rest/api/3/search/jql?jql=issueType=Epic%20ORDER%20BY%20updated%20DESC&maxResults=1000&fields=*all',
+        undefined,
+        'fallback fetch available epics'
+    );
+
+    if (!fallbackResponse.ok) {
+        const text = await fallbackResponse.text();
+        throw new Error(`Fallback epic search failed: ${fallbackResponse.status} ${text}`);
+    }
+
+    const fallbackData = await fallbackResponse.json();
+    return mapIssuesToSelectOptions(fallbackData.issues);
 });
 
 export const fetchSelectedEpics = createAsyncThunk('epics/fetchSelected',async (_, { getState })=>{
@@ -97,7 +150,17 @@ export const SaveSelectedEpics = createAsyncThunk('epics/SaveSelected',async (ne
 
 export const ProcessEpic = createAsyncThunk('epics/Process',async (epicKey)=>{
     try {
-        const res = await requestJira(`/rest/api/3/issue/${epicKey}`);
+        const res = await requestJiraWithRetry(
+            `/rest/api/3/issue/${encodeURIComponent(epicKey)}?fields=summary,duedate,issuetype`,
+            undefined,
+            `fetch epic ${epicKey}`
+        );
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Failed to fetch epic ${epicKey}: ${res.status} ${text}`);
+        }
+
         const data = await res.json();
 
         if (data.fields?.issuetype?.name === "Epic") {
@@ -105,7 +168,13 @@ export const ProcessEpic = createAsyncThunk('epics/Process',async (epicKey)=>{
             const returnedData = await searchAllIssues({
                 jql,
                 maxResults: 1000,
-                fields: ['*all']
+                fields: [
+                    'parent',
+                    'assignee',
+                    'status',
+                    'timeoriginalestimate',
+                    'timespent'
+                ]
             });
 
             return {
@@ -168,7 +237,17 @@ export const updateEpicDueDate = createAsyncThunk('epics/updateDueDate', async (
 
 export const fetchEpicDetails = createAsyncThunk('epics/fetchDetails', async (epicKey) => {
     try {
-        const res = await requestJira(`/rest/api/3/issue/${epicKey}?fields=summary,duedate,issuetype`);
+        const res = await requestJiraWithRetry(
+            `/rest/api/3/issue/${encodeURIComponent(epicKey)}?fields=summary,duedate,issuetype`,
+            undefined,
+            `fetch epic details for ${epicKey}`
+        );
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Failed to fetch epic details for ${epicKey}: ${res.status} ${text}`);
+        }
+
         const data = await res.json();
         
         return {
@@ -189,7 +268,7 @@ export const fetchCurrentUser = createAsyncThunk('user/fetchCurrent', async () =
     try {
         // Try to get current user info directly from JIRA API
         // Use /myself endpoint which doesn't require accountId
-        const response = await requestJira('/rest/api/3/myself');
+        const response = await requestJiraWithRetry('/rest/api/3/myself', undefined, 'fetch current user');
         
         if (!response.ok) {
             throw new Error('Failed to fetch current user');
@@ -257,7 +336,11 @@ export const updateUserRole = createAsyncThunk('user/updateRole', async ({ accou
 export const fetchAllUsers = createAsyncThunk('user/fetchAll', async () => {
     try {
         // Fetch users from JIRA API - using user search endpoint
-        const response = await requestJira('/rest/api/3/users/search?maxResults=1000');
+        const response = await requestJiraWithRetry(
+            '/rest/api/3/users/search?maxResults=1000',
+            undefined,
+            'fetch all users'
+        );
         
         if (!response.ok) {
             throw new Error('Failed to fetch users');
@@ -303,8 +386,3 @@ export const rebuildUserRolesRegistry = createAsyncThunk('user/rebuildRegistry',
     }
 });
 
-const pause = (duration) =>{
-    return new Promise((resolve)=>{
-        setTimeout(resolve,duration);
-    })
-};

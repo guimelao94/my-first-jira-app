@@ -18,6 +18,7 @@ const epicsSlice = createSlice({
     loaded: false,
     AllIssuesLoaded: false,
     error: null,
+    failedEpics: [],
     reloadCounter: 0,
     AllDevStacksLoaded:false,
     Holidays:null,
@@ -27,22 +28,51 @@ const epicsSlice = createSlice({
     isUserLoading: false
   },
   reducers: {
+    startRefresh(state) {
+      state.data = null;
+      state.issues = [];
+      state.Developers = [];
+      state.DevelopersFull = [];
+      state.isLoading = false;
+      state.loaded = false;
+      state.AllIssuesLoaded = false;
+      state.AllDevStacksLoaded = false;
+      state.failedEpics = [];
+      state.error = null;
+    },
+    completeRefresh(state) {
+      state.loaded = true;
+    },
+    markEpicLoadFailed(state, action) {
+      const epicKey = action.payload?.EpicKey;
+      if (!epicKey) {
+        return;
+      }
+
+      if (!state.failedEpics.some((item) => item.EpicKey === epicKey)) {
+        state.failedEpics.push({
+          EpicKey: epicKey,
+          error: action.payload?.error || 'Failed to load epic'
+        });
+      }
+    },
     setDevelopers(state, action) {
       state.Developers = action.payload;
+      const processedEpics = (state.data?.length || 0) + (state.failedEpics?.length || 0);
       console.log('setDevelopers called:', {
         developersCount: action.payload?.length || 0,
         dataLength: state.data?.length || 0,
         selectedLength: state.Selected?.length || 0,
+        failedEpics: state.failedEpics?.length || 0,
         allHaveDevelopers: state.data?.every(x => x.Developers != null) || false
       });
       
-      // Set loaded to true if we have data, all epics have developers, and we have developers
+      // Set loaded to true if every selected epic either loaded or failed, and loaded epics have developers assigned.
       if (state.data && 
           state.data.length > 0 && 
           state.data.every(x => x.Developers != null) && 
-          state.data.length === (state.Selected?.length || 0) && 
-          state.Developers && 
-          state.Developers.length > 0) {
+          processedEpics === (state.Selected?.length || 0) && 
+          state.Developers != null) {
         console.log('setDevelopers: Setting loaded = true');
         state.loaded = true;
       } else {
@@ -76,22 +106,35 @@ const epicsSlice = createSlice({
     setEpicDevelopers(state, action) {
       const epic = state.data?.find(x => x.EpicKey === action.payload.EpicKey);
       if (epic) {
+        if (typeof action.payload.issueCount === 'number') {
+          epic.Issues = Array.isArray(epic.Issues) ? epic.Issues.slice(0, action.payload.issueCount) : [];
+        }
         epic.Developers = action.payload.Developers;
+        epic.loaded = true;
         console.log(`setEpicDevelopers: Updated epic ${action.payload.EpicKey}`, {
           hasDevelopers: !!epic.Developers,
+          issueCount: epic.Issues?.length || 0,
           allEpicsHaveDevelopers: state.data?.every(x => x.Developers != null) || false,
           hasGlobalDevelopers: !!state.Developers,
           developersLength: state.Developers?.length || 0
         });
       }
+
+      const totalIssues = state.data?.reduce((accumulator, item) => {
+        return accumulator + (item.Issues?.length || 0);
+      }, 0) || 0;
+
+      if (state.Selected?.length > 0 && totalIssues === (state.issues?.length || 0)) {
+        state.AllIssuesLoaded = true;
+      }
       
       // Check if we should set loaded = true
+      const processedEpics = (state.data?.length || 0) + (state.failedEpics?.length || 0);
       if (state.data && 
           state.data.length > 0 &&
           state.data.every(x => x.Developers != null) && 
-          state.Developers && 
-          state.Developers.length > 0 &&
-          state.data.length === (state.Selected?.length || 0)) {
+          state.Developers != null &&
+          processedEpics === (state.Selected?.length || 0)) {
         state.DevelopersFull = groupByDevs(state.issues,'dev');
         console.log('setEpicDevelopers: Setting loaded = true');
         state.loaded = true;
@@ -125,6 +168,7 @@ const epicsSlice = createSlice({
         if (epic) {
           const payloadIssues = action.payload;
           console.log(payloadIssues);
+          epic.Issues = payloadIssues;
           epic.TimeRemaining = convertToHours(payloadIssues.reduce((total, item) => total + (item['remainingTime'] || 0), 0));
           epic.TimeSpent = convertToHours(payloadIssues.reduce((total, item) => total + (item['timespent'] || 0), 0));
           epic.OriginalEstimate = convertToHours(payloadIssues.reduce((total, item) => total + (item['originalestimate'] || 0), 0));
@@ -156,6 +200,7 @@ const epicsSlice = createSlice({
       state.data = null;
       state.issues = [];
       state.DevelopersFull = [];
+      state.failedEpics = [];
       state.SaveDevCounter++;
     }
   },
@@ -201,6 +246,7 @@ const epicsSlice = createSlice({
       state.DevelopersFull = [];
       state.loaded = false;
       state.AllDevStacksLoaded = false;
+      state.failedEpics = [];
       state.reloadCounter++;
       //state.reload = true;
       //state.AllIssuesLoaded = false;
@@ -253,5 +299,5 @@ const epicsSlice = createSlice({
 
   }
 });
-export const { setDevelopers, setEpicDevelopers, setIssueData, setDevHours, reOrderEpics,setEpicDevStack,setHolidays, setCurrentUser, setUserRole } = epicsSlice.actions;
+export const { startRefresh, completeRefresh, markEpicLoadFailed, setDevelopers, setEpicDevelopers, setIssueData, setDevHours, reOrderEpics,setEpicDevStack,setHolidays, setCurrentUser, setUserRole } = epicsSlice.actions;
 export const epicsReducer = epicsSlice.reducer;

@@ -1,11 +1,11 @@
 import { useDispatch } from "react-redux";
 import { fetchAvailableEpics, fetchHolidays, fetchSelectedEpics, ProcessEpic } from "../store";
-import { reOrderEpics, setDevelopers, setEpicDevelopers, setEpicDevStack, setHolidays, setIssueData } from '../store/slices/epicSlice';
+import { completeRefresh, markEpicLoadFailed, reOrderEpics, setDevelopers, setEpicDevelopers, setEpicDevStack, setHolidays, setIssueData, startRefresh } from '../store/slices/epicSlice';
 import { groupByDevs } from "../Utils/GroupingTools";
 import { invoke, requestJira } from "@forge/bridge";
+import { createTransientError, delay, retryBridgeOperation } from "../Utils/BridgeRetry";
 
-// Simple delay helper for backoff
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const ISSUE_PROCESS_CONCURRENCY = 2;
 
 // Limit how many heavy requests run at once to avoid hitting Forge/Jira rate limits
 const processWithConcurrency = async (items, handler, concurrency = 3) => {
@@ -29,37 +29,33 @@ const processWithConcurrency = async (items, handler, concurrency = 3) => {
   return results;
 };
 
-// Retry helper for Forge invoke/request rate limits
-const retryOnRateLimit = async (fn, { retries = 3, baseDelay = 500, description = 'operation' } = {}) => {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      const message = (error?.message || '').toLowerCase();
-      const isRateLimit = message.includes('rate limit');
-      if (isRateLimit && attempt < retries) {
-        const retryDelay = baseDelay * Math.pow(2, attempt);
-        console.warn(`${description} rate limited, retrying in ${retryDelay}ms (attempt ${attempt + 1} of ${retries + 1})`);
-        await delay(retryDelay);
-        continue;
+const requestJiraWithRetry = async (url, options = undefined, description = 'requestJira call') => {
+  return retryBridgeOperation(async () => {
+    const response = await requestJira(url, options);
+
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers?.get('retry-after')) || 0;
+      if (retryAfter > 0) {
+        await delay(retryAfter * 1000);
       }
-      throw error;
+      throw createTransientError(`Rate limited during ${description}`, { status: response.status });
     }
-  }
+
+    if (response.status >= 500) {
+      throw createTransientError(`Temporary Jira error during ${description}`, { status: response.status });
+    }
+
+    return response;
+  }, { description });
 };
 
 const fetchWorklogsWithRetry = async (issueKey) => {
-  return retryOnRateLimit(async () => {
-    const response = await requestJira(`/rest/api/3/issue/${issueKey}/worklog`);
-    if (response.status === 429) {
-      const retryAfter = Number(response.headers?.get('retry-after')) || 0;
-      const error = new Error(`rate limited fetching worklogs for ${issueKey}`);
-      if (retryAfter) {
-        // Respect Retry-After header when present
-        await delay(retryAfter * 1000);
-      }
-      throw error;
-    }
+  return retryBridgeOperation(async () => {
+    const response = await requestJiraWithRetry(
+      `/rest/api/3/issue/${encodeURIComponent(issueKey)}/worklog`,
+      undefined,
+      `fetch worklogs for ${issueKey}`
+    );
     if (!response.ok) {
       const body = await response.text();
       throw new Error(`Failed to fetch worklogs for ${issueKey}: ${response.status} ${body}`);
@@ -69,14 +65,14 @@ const fetchWorklogsWithRetry = async (issueKey) => {
 };
 
 const fetchStorageWithRetry = async (key) => {
-  return retryOnRateLimit(
+  return retryBridgeOperation(
     () => invoke('Storage.GetData', { key }),
     { description: `Fetch storage for ${key}` }
   );
 };
 
 const saveStorageWithRetry = async (key, value) => {
-  return retryOnRateLimit(
+  return retryBridgeOperation(
     () => invoke('Storage.SaveData', { key, value }),
     { description: `Save storage for ${key}` }
   );
@@ -85,6 +81,7 @@ const saveStorageWithRetry = async (key, value) => {
 export const HandleEpicThunks = async (dispatch, type = 'FullRefresh', epics, currentUserAccountId) => {
   let issueList = [];
   let selected = null;
+  dispatch(startRefresh());
   
   switch (type) {
     case 'FullRefresh':
@@ -106,25 +103,36 @@ export const HandleEpicThunks = async (dispatch, type = 'FullRefresh', epics, cu
         await HandleEpics(dispatch, selected, issueList);
         if (issueList.length > 0) {
           await HandleDevs(dispatch, issueList, currentUserAccountId);
+        } else {
+          dispatch(setDevelopers([]));
         }
         await dispatch(reOrderEpics());
         await dispatch(setEpicDevStack());
       } else {
         console.log('FullRefresh: No selected epics found, initializing empty state');
-        // Even if no epics selected, ensure data is initialized as empty array
-        dispatch(setIssueData([]));
+        dispatch(setDevelopers([]));
       }
+      dispatch(completeRefresh());
       break;
     case 'EpicRefresh':
       await dispatch(fetchAvailableEpics());
       selected = await dispatch(fetchSelectedEpics());
       if (selected?.payload && Array.isArray(selected.payload) && selected.payload.length > 0) {
         await HandleEpics(dispatch, selected, issueList);
+        if (issueList.length > 0) {
+          await HandleDevs(dispatch, issueList, currentUserAccountId);
+        } else {
+          dispatch(setDevelopers([]));
+        }
         await dispatch(reOrderEpics());
         await dispatch(setEpicDevStack());
+      } else {
+        dispatch(setDevelopers([]));
       }
+      dispatch(completeRefresh());
       break;
     default:
+      dispatch(completeRefresh());
       break;
   }
 }
@@ -151,30 +159,44 @@ export const HandleEpics = async (dispatch, selected, issueList) => {
     const element = selected.payload[index];
     try {
       console.log(`HandleEpics: Processing epic ${element}`);
-      const epic = await dispatch(ProcessEpic(element));
+      const epic = await dispatch(ProcessEpic(element)).unwrap();
       
-      if (epic.payload && epic.payload.Issues) {
-        console.log(`HandleEpics: Epic ${element} has ${epic.payload.Issues.length} issues`);
+      if (epic && epic.Issues) {
+        console.log(`HandleEpics: Epic ${element} has ${epic.Issues.length} issues`);
         // Process issues with a small concurrency limit to avoid rate limits
         const epicIssues = await processWithConcurrency(
-          epic.payload.Issues,
+          epic.Issues,
           (issue, idx) => FillIssueData({ item: issue, index: idx }),
-          3
+          ISSUE_PROCESS_CONCURRENCY
         );
         const validEpicIssues = epicIssues.filter(Boolean);
+
+        if (validEpicIssues.length !== epic.Issues.length) {
+          console.warn(
+            `HandleEpics: Loaded ${validEpicIssues.length} of ${epic.Issues.length} issues for epic ${element}`
+          );
+        }
         
         issueList.push(...validEpicIssues);
         
-        const epicIssuesFiltered = issueList.filter(x => x.EpicKey === epic.payload.EpicKey);
+        const epicIssuesFiltered = issueList.filter(x => x.EpicKey === epic.EpicKey);
         await dispatch(setIssueData(epicIssuesFiltered));
         
         const devs = groupByDevs(epicIssuesFiltered, 'dev');
-        await dispatch(setEpicDevelopers({ EpicKey: epic.payload.EpicKey, Developers: devs }));
+        await dispatch(setEpicDevelopers({
+          EpicKey: epic.EpicKey,
+          Developers: devs,
+          issueCount: validEpicIssues.length
+        }));
       } else {
         console.log(`HandleEpics: Epic ${element} has no issues or payload is null`);
       }
     } catch (error) {
       console.error(`HandleEpics: Error processing epic ${element}:`, error);
+      dispatch(markEpicLoadFailed({
+        EpicKey: element,
+        error: error?.message || 'Failed to load epic'
+      }));
     }
   }
   
@@ -311,7 +333,11 @@ export const RefreshDevelopersList = async (devs, currentUserAccountId) => {
   if (devsNeedingAvatars.length > 0) {
     const avatarPromises = devsNeedingAvatars.map(async (dev) => {
       try {
-        const resp = await requestJira(`/rest/api/3/user?accountId=${dev.AccountID}`);
+        const resp = await requestJiraWithRetry(
+          `/rest/api/3/user?accountId=${encodeURIComponent(dev.AccountID)}`,
+          undefined,
+          `fetch avatar for ${dev.FullName}`
+        );
         const developer = await resp.json();
         dev.AvatarUrl = developer.avatarUrls?.['16x16'];
       } catch (error) {

@@ -9,12 +9,49 @@ export const EpicList = memo(function EpicList(){
     const dispatch = useDispatch();
     const available = useSelector((state) => state.epics.Available);
     const selected = useSelector((state) => state.epics.Selected);
+    const loadedEpics = useSelector((state) => state.epics.data);
     const [selectValue, setSelectValue] = React.useState([]);
     const [modalEpic, setModalEpic] = useState(null);
 
+    const mergedOptions = React.useMemo(() => {
+        const optionMap = new Map();
+
+        if (Array.isArray(available)) {
+            available.forEach((option) => {
+                if (option?.value) {
+                    optionMap.set(option.value, option);
+                }
+            });
+        }
+
+        if (Array.isArray(loadedEpics)) {
+            loadedEpics.forEach((epic) => {
+                if (epic?.EpicKey && !optionMap.has(epic.EpicKey)) {
+                    optionMap.set(epic.EpicKey, {
+                        label: epic.EpicKey,
+                        value: epic.EpicKey
+                    });
+                }
+            });
+        }
+
+        if (Array.isArray(selected)) {
+            selected.forEach((epicKey) => {
+                if (epicKey && !optionMap.has(epicKey)) {
+                    optionMap.set(epicKey, {
+                        label: epicKey,
+                        value: epicKey
+                    });
+                }
+            });
+        }
+
+        return Array.from(optionMap.values());
+    }, [available, loadedEpics, selected]);
+
     // Sync selectValue with selected epics from Redux
     React.useEffect(() => {
-        if (!available || !Array.isArray(available)) {
+        if (!Array.isArray(mergedOptions)) {
             setSelectValue([]);
             return;
         }
@@ -27,9 +64,9 @@ export const EpicList = memo(function EpicList(){
         }
         
         const selectedSet = new Set(selectedArray);
-        const currentValue = available.filter(x => selectedSet.has(x.value));
+        const currentValue = mergedOptions.filter(x => selectedSet.has(x.value));
         setSelectValue(currentValue);
-    }, [available, selected]);
+    }, [mergedOptions, selected]);
 
     const handleChange = React.useCallback(async (e) => {
         const newSelected = Array.isArray(e) ? e : [];
@@ -85,10 +122,11 @@ export const EpicList = memo(function EpicList(){
     return(
         <>
             <Select 
-                options={available || []} 
+                options={mergedOptions} 
                 value={selectValue}
                 isMulti 
                 onChange={handleChange}
+                noOptionsMessage={() => 'No epics available'}
             />
             {modalEpic && (
                 <EpicDueDateModal

@@ -22,6 +22,7 @@ const RoleBasedView = () => {
     const loaded = useSelector((state) => state.epics.loaded);
     const selected = useSelector((state) => state.epics.Selected);
     const developers = useSelector((state) => state.epics.Developers);
+    const failedEpics = useSelector((state) => state.epics.failedEpics);
     const [showAdminSection, setShowAdminSection] = useState(false);
     
     // Debug logging
@@ -32,13 +33,14 @@ const RoleBasedView = () => {
             dataExists: !!data,
             selectedLength: selected?.length || 0,
             developersLength: developers?.length || 0,
+            failedEpics: failedEpics?.map((epic) => epic.EpicKey) || [],
             allEpicsHaveDevelopers: data?.every(x => x.Developers != null) || false,
             data: data?.map(epic => ({
                 key: epic.EpicKey,
                 hasDevelopers: !!epic.Developers
             }))
         });
-    }, [loaded, data, selected, developers]);
+    }, [loaded, data, selected, developers, failedEpics]);
 
     const headerStyles = xcss({
         padding: 'space.300',
@@ -89,6 +91,25 @@ const RoleBasedView = () => {
                     </Box>
                 </Box>
             </Box>
+
+            {loaded && failedEpics?.length > 0 && (
+                <Box
+                    xcss={xcss({ padding: 'space.200', margin: 'space.200' })}
+                    style={{
+                        backgroundColor: '#FFF7D6',
+                        borderLeft: '4px solid #B38600',
+                        borderRadius: '6px'
+                    }}
+                >
+                    <Box xcss={xcss({ marginBottom: 'space.100' })}>
+                        <Lozenge appearance="removed">Partial Load</Lozenge>
+                    </Box>
+                    <p style={{ margin: 0 }}>
+                        Some epics could not be loaded: {failedEpics.map((epic) => epic.EpicKey).join(', ')}.
+                        Refresh the page to retry those requests.
+                    </p>
+                </Box>
+            )}
 
             {/* Admin Section Toggle */}
             {effectiveRole === 'Admin' && (
@@ -176,7 +197,7 @@ const RoleBasedView = () => {
                                 </Box>
                             </Grid>
                         ) : (
-                            <p>No epics selected</p>
+                            <p>{selected?.length > 0 ? 'No epics could be loaded.' : 'No epics selected'}</p>
                         )}
                     </div>
                 </Box>
@@ -226,7 +247,7 @@ const RoleBasedView = () => {
                                 })}
                             </div>
                         ) : (
-                            <p>No epics selected</p>
+                            <p>{selected?.length > 0 ? 'No epics could be loaded.' : 'No epics selected'}</p>
                         )}
                     </Box>
                 </Box>
@@ -282,7 +303,7 @@ const RoleBasedView = () => {
                                 })}
                             </div>
                         ) : (
-                            <p>No epics selected</p>
+                            <p>{selected?.length > 0 ? 'No epics could be loaded.' : 'No epics selected'}</p>
                         )}
                     </Box>
                 </Box>
