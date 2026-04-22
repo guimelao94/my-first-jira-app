@@ -1,7 +1,14 @@
 import React from 'react';
-import { Modal, ModalBody, ModalTransition, ModalTitle, ModalFooter, ModalHeader, Button, TextArea, Inline, Textfield, User, xcss, Box, Text } from '@forge/react';
+import { Modal, ModalBody, ModalTransition, ModalTitle, ModalFooter, ModalHeader, Button, TextArea, Inline, Textfield, User, Select, xcss, Box, Text } from '@forge/react';
 
-export const AddOverflowModal = ({timeSpent,setTimeSpent,context,description,setDescription,date,setDate,closeModal,isOpen}) => {
+const overflowCategoryOptions = [
+    { label: 'Unplanned Development', value: 'Unplanned Development' },
+    { label: 'New Requirements', value: 'New Requirements' },
+    { label: 'Bug Related', value: 'Bug Related' }
+];
+
+export const AddOverflowModal = ({timeSpent,setTimeSpent,context,description,setDescription,date,setDate,category,setCategory,validationMessage,closeModal,submitModal,isOpen}) => {
+    const selectedCategoryOption = overflowCategoryOptions.find((option) => option.value === category) || null;
 
     return(
         <ModalTransition>
@@ -37,6 +44,18 @@ export const AddOverflowModal = ({timeSpent,setTimeSpent,context,description,set
                                     onChange={(e) => { setDate(e.target.value); }}
                                 />
                             </Box>
+                            <Box xcss={xcss({ marginBottom: 'space.200' })}>
+                                <Text>Category:</Text>
+                                <Select
+                                    inputId="overflow-category"
+                                    name="overflow-category"
+                                    options={overflowCategoryOptions}
+                                    value={selectedCategoryOption}
+                                    placeholder="Select a category"
+                                    isClearable={false}
+                                    onChange={(option) => { setCategory(option?.value || ''); }}
+                                />
+                            </Box>
                             <TextArea
                                 id="area"
                                 placeholder="Description"
@@ -44,12 +63,17 @@ export const AddOverflowModal = ({timeSpent,setTimeSpent,context,description,set
                                 onChange={(e) => { setDescription(e.target.value); }}
                                 value={description}
                             />
+                            {validationMessage && (
+                                <Box xcss={xcss({ marginTop: 'space.200', color: 'color.text.danger' })}>
+                                    <Text>{validationMessage}</Text>
+                                </Box>
+                            )}
                         </ModalBody>
                         <ModalFooter>
                             <Button appearance="subtle" onClick={closeModal}>
                                 Cancel
                             </Button>
-                            <Button appearance="primary" onClick={closeModal}>
+                            <Button appearance="primary" onClick={submitModal}>
                                 Submit
                             </Button>
                         </ModalFooter>

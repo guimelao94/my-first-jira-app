@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ForgeReconciler from '@forge/react';
 import { invoke, requestJira, view } from '@forge/bridge';
-import { Modal, ModalBody, ModalTransition, ModalTitle, ModalFooter, ModalHeader, Button, TextArea, Inline, Textfield, User, UserPicker, Text, xcss, Box } from '@forge/react';
+import { Button, Inline, UserPicker, xcss, Box } from '@forge/react';
 import { AddOverflowModal } from './AddOverflowModal';
 import { ViewOverflowModal } from './ViewOverflowModal';
 import { Checkbox } from '@forge/react';
@@ -12,9 +12,31 @@ const App = () => {
     const [timeSpent, setTimeSpent] = useState("");
     const [description, setDescription] = useState("");
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // Format: YYYY-MM-DD
+    const [category, setCategory] = useState("");
+    const [overflowError, setOverflowError] = useState("");
     const [developer, setDeveloper] = useState(null);
     const [isCompleted, setIsCompleted] = useState(false);
-    const openAddOverflowModal = () => setIsAddOverflowOpen(true);
+    const updateOverflowField = (setter) => (value) => {
+        if (overflowError) {
+            setOverflowError('');
+        }
+        setter(value);
+    };
+    const updateOverflowTimeSpent = updateOverflowField(setTimeSpent);
+    const updateOverflowDescription = updateOverflowField(setDescription);
+    const updateOverflowDate = updateOverflowField(setDate);
+    const updateOverflowCategory = updateOverflowField(setCategory);
+    const resetOverflowForm = () => {
+        setTimeSpent('');
+        setDescription('');
+        setDate(new Date().toISOString().split('T')[0]);
+        setCategory('');
+        setOverflowError('');
+    };
+    const openAddOverflowModal = () => {
+        resetOverflowForm();
+        setIsAddOverflowOpen(true);
+    };
     const openViewOverflowModal = () => setIsViewOverflowOpen(true);
 
     const updateDeveloper = async (user) => {
@@ -60,12 +82,29 @@ const App = () => {
     const closeViewOverflowModal = () =>{
         setIsViewOverflowOpen(false);
     }
-    const closeAddOverflowModal = async () => {
+    const cancelAddOverflowModal = () => {
+        resetOverflowForm();
+        setIsAddOverflowOpen(false);
+    }
+    const submitOverflowModal = async () => {
+        const parsedTimeSpent = Number(timeSpent);
+        if (!Number.isFinite(parsedTimeSpent) || parsedTimeSpent <= 0) {
+            setOverflowError('Enter overflow time as a number of hours greater than 0.');
+            return;
+        }
+
+        if (!category) {
+            setOverflowError('Select an overflow category before submitting.');
+            return;
+        }
+
+        setOverflowError('');
         var resp = await requestJira(`/rest/api/3/user?accountId=${context.accountId}`);
         var Developer = await resp.json();
         var submission = {
-            TimeSpent: timeSpent * 3600,
+            TimeSpent: parsedTimeSpent * 3600,
             Description: description,
+            Category: category,
             Developer: {FullName:Developer.displayName,AccountID:context.accountId},
             Date: date, // Use the selected date instead of timestamp
             TimeStamp: (new Date()).toLocaleString() // Keep for backward compatibility
@@ -99,9 +138,7 @@ const App = () => {
         console.log(storageData);
 
         console.log(submission);
-        setTimeSpent('');
-        setDescription('');
-        setDate(new Date().toISOString().split('T')[0]); // Reset to today's date
+        resetOverflowForm();
         setIsAddOverflowOpen(false);
     }
     const [context, setContext] = useState(null);
@@ -168,7 +205,7 @@ const App = () => {
             </Inline>
 
 
-           {isAddOverflowOpen && <AddOverflowModal timeSpent={timeSpent} description={description} date={date} setTimeSpent={setTimeSpent} setDescription={setDescription} setDate={setDate} context={context} isOpen={isAddOverflowOpen} closeModal={closeAddOverflowModal} />} 
+           {isAddOverflowOpen && <AddOverflowModal timeSpent={timeSpent} description={description} date={date} category={category} validationMessage={overflowError} setTimeSpent={updateOverflowTimeSpent} setDescription={updateOverflowDescription} setDate={updateOverflowDate} setCategory={updateOverflowCategory} context={context} isOpen={isAddOverflowOpen} closeModal={cancelAddOverflowModal} submitModal={submitOverflowModal} />} 
            {isViewOverflowOpen && <ViewOverflowModal IssueKey={context.extension.issue.key} isOpen={isViewOverflowOpen} closeModal={closeViewOverflowModal} />} 
 
         </>

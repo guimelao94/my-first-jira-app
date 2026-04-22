@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { invoke, requestJira, view } from '@forge/bridge';
 import TrashIcon from '@atlaskit/icon/glyph/trash'
 
+const uncategorizedOverflowLabel = 'Uncategorized';
+
 export const ViewOverflowModal = ({ IssueKey, closeModal, isOpen }) => {
     const [overflowData, setOverflowData] = useState(null);
     const [removeCount,setRemoveCount] = useState(0);
@@ -70,11 +72,15 @@ const GenerateRows = (data,removeRecord) => {
     console.log(data);
     if(!data)return null;
     var rows = data.map((r, index) => ({
-        key: `row-${index}-${r.Developer.FullName.replace(' ','-')}`,
+        key: `row-${index}-${(r.Developer?.FullName || 'unknown').replace(' ','-')}`,
         cells: [
             {
                 key: r.Description,
                 content: r.Description,
+            },
+            {
+                key: r.Category || uncategorizedOverflowLabel,
+                content: r.Category || uncategorizedOverflowLabel,
             },
             {
                 key: r.TimeSpent || '' ,
@@ -85,8 +91,8 @@ const GenerateRows = (data,removeRecord) => {
                 content: r.TimeStamp,
             },
             {
-                key: r.Developer.FullName,
-                content: r.Developer.FullName,
+                key: r.Developer?.FullName || '',
+                content: r.Developer?.FullName || '',
             },
             {
                 key: '',
@@ -104,6 +110,12 @@ const GenerateHeader = () => {
             {
                 key: "Description",
                 content: "Description",
+                isSortable: true,
+            },
+            {
+                key: "Category",
+                content: "Category",
+                shouldTruncate: true,
                 isSortable: true,
             },
             {

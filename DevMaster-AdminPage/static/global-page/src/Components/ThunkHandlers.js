@@ -78,6 +78,17 @@ const saveStorageWithRetry = async (key, value) => {
   );
 };
 
+const normalizeOverflowEntries = (entries) => {
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+
+  return entries.filter(Boolean).map((entry) => ({
+    ...entry,
+    Category: entry?.Category || 'Uncategorized'
+  }));
+};
+
 export const HandleEpicThunks = async (dispatch, type = 'FullRefresh', epics, currentUserAccountId) => {
   let issueList = [];
   let selected = null;
@@ -264,7 +275,9 @@ const FillIssueData = async ({ item, index }) => {
     customFields = storageData;
   }
 
-  const overflowTimeFromStorage = customFields.Overflow?.reduce((total, item) => 
+  const overflowEntries = normalizeOverflowEntries(customFields.Overflow);
+
+  const overflowTimeFromStorage = overflowEntries.reduce((total, item) => 
     total + (item.TimeSpent || 0), 0) || 0;
   
   const remainingTime = item.fields?.timeoriginalestimate 
@@ -290,7 +303,7 @@ const FillIssueData = async ({ item, index }) => {
     remainingTime,
     timespent: item.fields?.timespent || 0,
     originalestimate: item.fields?.timeoriginalestimate || 0,
-    overflowTime: customFields.Overflow || [],
+    overflowTime: overflowEntries,
     worklogs: workLogs,
     fullWorklogs: fullWorklogs, // Store full worklog data for date filtering
     overflowCalculated
