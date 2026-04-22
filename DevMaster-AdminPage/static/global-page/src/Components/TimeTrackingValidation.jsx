@@ -29,6 +29,7 @@ export const TimeTrackingValidation = ({ filterByCurrentUser = false }) => {
     const [selectedTicketDetails, setSelectedTicketDetails] = useState(null); // For showing validation details modal
     const [currentPage, setCurrentPage] = useState(1);
     const [groupByChangedBy, setGroupByChangedBy] = useState(false);
+    const [worklogStatus, setWorklogStatus] = useState({});
     const itemsPerPage = 10;
 
     // Track if component is mounted to prevent state updates after unmount
@@ -49,6 +50,15 @@ export const TimeTrackingValidation = ({ filterByCurrentUser = false }) => {
 
     // Helper function to delay execution
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const formatForJira = (date) => {
+        const d = new Date(date);
+        if (isNaN(d.getTime())) {
+            throw new Error('Invalid date');
+        }
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}.000+0000`;
+    };
 
     // Cache for changelog data to avoid refetching (useRef to persist across renders)
     const changelogCache = useRef(new Map());
@@ -268,6 +278,60 @@ export const TimeTrackingValidation = ({ filterByCurrentUser = false }) => {
             return overlaps;
         });
     };
+
+    const getViolationKey = useCallback((ticketKey, violation) => {
+        const entryIso = violation?.entryDate ? new Date(violation.entryDate).toISOString() : 'unknown';
+        const exitIso = violation?.exitDate ? new Date(violation.exitDate).toISOString() : 'open';
+        return `${ticketKey}_${entryIso}_${exitIso}`;
+    }, []);
+
+    const addWorklogForViolation = useCallback(async (ticketKey, violation) => {
+        if (!ticketKey || !violation?.entryDate) {
+            return;
+        }
+
+        const stateKey = getViolationKey(ticketKey, violation);
+        setWorklogStatus((prev) => ({ ...prev, [stateKey]: 'loading' }));
+
+        try {
+            const startDate = new Date(violation.entryDate);
+            const endDate = violation.exitDate ? new Date(violation.exitDate) : new Date();
+
+            // Ensure we have a minimum of one minute
+            const durationMs = Math.max(endDate.getTime() - startDate.getTime(), 60 * 1000);
+            const timeSpentSeconds = Math.max(
+                60,
+                Math.round(durationMs / 1000)
+            );
+
+            const startedFormatted = formatForJira(startDate);
+
+            const response = await requestJira(`/rest/api/3/issue/${ticketKey}/worklog`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    comment: `Auto-added via DevMaster Time Tracking Validation to cover unlogged time while in status "${violation.status || 'Unknown'}" (${startDate.toISOString()} - ${endDate.toISOString()}).`,
+                    started: startedFormatted,
+                    timeSpentSeconds
+                })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to add worklog: ${response.status} ${errorText || response.statusText}`);
+            }
+
+            setWorklogStatus((prev) => ({ ...prev, [stateKey]: 'success' }));
+        } catch (error) {
+            console.error(`Error adding worklog for ${ticketKey}:`, error);
+            setWorklogStatus((prev) => ({
+                ...prev,
+                [stateKey]: error?.message || 'error'
+            }));
+        }
+    }, [getViolationKey]);
 
     // Analyze ticket for time tracking violations (memoized to use cached fetchChangelog)
     const analyzeTicket = useCallback(async (ticket) => {
@@ -1121,6 +1185,7 @@ export const TimeTrackingValidation = ({ filterByCurrentUser = false }) => {
                                             <Header width={150}>Changed By</Header>
                                             <Header width={100}>Duration</Header>
                                             <Header width={200}>Reason</Header>
+                                            <Header width={180}>Correct</Header>
                                         </Headers>
                                         <Rows
                                             items={(Array.isArray(selectedTicketDetails?.violations) ? selectedTicketDetails.violations : [])
@@ -1156,6 +1221,14 @@ export const TimeTrackingValidation = ({ filterByCurrentUser = false }) => {
                                                     const reason = violation.exitDate 
                                                         ? `No time tracked during ${durationFormatted} period while in "${violation.status || 'Unknown'}" status`
                                                         : `Currently in "${violation.status || 'Unknown'}" status with no time tracked since entry`;
+
+                                                    const violationKey = getViolationKey(
+                                                        selectedTicketDetails?.ticket?.ticketNumber,
+                                                        violation
+                                                    );
+                                                    const actionStatus = worklogStatus[violationKey];
+                                                    const isActionLoading = actionStatus === 'loading';
+                                                    const isActionSuccess = actionStatus === 'success';
                                                     
                                                     return (
                                                         <Row items={[]} hasChildren={false}>
@@ -1197,6 +1270,23 @@ export const TimeTrackingValidation = ({ filterByCurrentUser = false }) => {
                                                                     {reason}
                                                                 </span>
                                                             </Cell>
+                                                            <Cell width={180}>
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                    <Button
+                                                                        appearance={isActionSuccess ? 'success' : 'primary'}
+                                                                        isDisabled={isActionSuccess || isActionLoading || !selectedTicketDetails?.ticket?.ticketNumber}
+                                                                        isLoading={isActionLoading}
+                                                                        onClick={() => addWorklogForViolation(selectedTicketDetails.ticket.ticketNumber, violation)}
+                                                                    >
+                                                                        {isActionSuccess ? 'Worklog added' : 'Add worklog'}
+                                                                    </Button>
+                                                                    {actionStatus && actionStatus !== 'loading' && actionStatus !== 'success' && (
+                                                                        <span style={{ color: '#AE2E24', fontSize: '12px' }}>
+                                                                            {actionStatus}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </Cell>
                                                         </Row>
                                                     );
                                                 } catch (err) {
@@ -1230,4 +1320,3 @@ export const TimeTrackingValidation = ({ filterByCurrentUser = false }) => {
         </Box>
     );
 };
-

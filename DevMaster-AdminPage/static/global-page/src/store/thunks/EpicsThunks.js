@@ -1,12 +1,47 @@
 import { invoke, requestJira } from "@forge/bridge";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
+// Helper to fetch all pages using nextPageToken
+const searchAllIssues = async ({ jql, fields = ['*all'], maxResults = 1000 }) => {
+    let issues = [];
+    let nextPageToken = null;
+    let total = null;
+
+    do {
+        const params = [
+            `jql=${encodeURIComponent(jql)}`,
+            `maxResults=${maxResults}`
+        ];
+        if (fields && Array.isArray(fields)) {
+            fields.forEach(f => params.push(`fields=${encodeURIComponent(f)}`));
+        }
+        if (nextPageToken) {
+            params.push(`nextPageToken=${encodeURIComponent(nextPageToken)}`);
+        }
+
+        const res = await requestJira(`/rest/api/3/search/jql?${params.join('&')}`);
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`JQL search failed: ${res.status} ${text}`);
+        }
+
+        const data = await res.json();
+        issues = issues.concat(data.issues || []);
+        total = typeof data.total === 'number' ? data.total : total;
+        nextPageToken = data.nextPageToken || null;
+    } while (nextPageToken);
+
+    return { issues, total: total ?? issues.length };
+};
+
 export const fetchAvailableEpics = createAsyncThunk('epics/fetchAvailable',async ()=>{
-    const res = await requestJira(`/rest/api/3/search/jql?jql=issueType=Epic%20ORDER%20BY%20updated%20DESC&maxResults=1000&fields=*all`);
+    const result = await searchAllIssues({
+        jql: 'issueType = Epic ORDER BY updated DESC',
+        maxResults: 1000,
+        fields: ['*all']
+    });
 
-    const data = await res.json();
-
-    return data.issues.map((item) => ({
+    return result.issues.map((item) => ({
         label: item.key,
         value: item.key
     }));
@@ -66,8 +101,12 @@ export const ProcessEpic = createAsyncThunk('epics/Process',async (epicKey)=>{
         const data = await res.json();
 
         if (data.fields?.issuetype?.name === "Epic") {
-            const jql = await requestJira(`/rest/api/3/search/jql?jql=parent=${epicKey}&maxResults=1000&fields=*all`);
-            const returnedData = await jql.json();
+            const jql = `parent = ${epicKey} ORDER BY updated DESC`;
+            const returnedData = await searchAllIssues({
+                jql,
+                maxResults: 1000,
+                fields: ['*all']
+            });
 
             return {
                 EpicKey: epicKey,

@@ -5,84 +5,54 @@ import TableTree, { Cell, Header, Headers, Row, Rows } from '@atlaskit/table-tre
 import Lozenge from '@atlaskit/lozenge';
 import { convertToHours } from '../Utils/ConversionTools';
 import { TicketDetailsModal } from './TicketDetailsModal';
+import { useEffect } from 'react';
 
-// Helper function to check if a date is a weekend
+const normalizeName = (name) => (name || '').trim().toLowerCase();
+const pad2 = (n) => String(n).padStart(2, '0');
+
+// Helper to check if a date is weekend
 const isWeekend = (date) => {
     const dayOfWeek = date.getDay();
     return dayOfWeek === 0 || dayOfWeek === 6; // 0 is Sunday, 6 is Saturday
 };
 
-// Helper function to check if today is Monday
-const isTodayMonday = () => {
-    const today = new Date();
-    return today.getDay() === 1; // 1 is Monday
-};
-
-// Helper function to get the previous business day (skipping weekends and holidays)
-const getPreviousBusinessDay = (holidays = []) => {
+// Get the previous business day key (YYYY-MM-DD), skipping weekends/holidays
+const getPreviousBusinessDayKey = (holidays = []) => {
     const today = new Date();
     let previousDay = new Date(today);
     previousDay.setDate(previousDay.getDate() - 1);
-    
-    // Keep going back until we find a business day (not weekend and not holiday)
-    while (isWeekend(previousDay) || (holidays && holidays.includes(previousDay.toISOString().substring(0, 10)))) {
+
+    const holidaySet = new Set((holidays || []).map(h => h));
+
+    while (isWeekend(previousDay) || holidaySet.has(previousDay.toISOString().substring(0, 10))) {
         previousDay.setDate(previousDay.getDate() - 1);
     }
-    
-    return previousDay;
+
+    return `${previousDay.getFullYear()}-${pad2(previousDay.getMonth() + 1)}-${pad2(previousDay.getDate())}`;
 };
 
-// Helper function to get dates to include (Friday, Saturday, Sunday if Monday, otherwise just previous business day)
-const getDatesToInclude = (holidays = []) => {
-    const today = new Date();
-    const dates = [];
-    
-    if (isTodayMonday()) {
-        // If Monday, include Friday, Saturday, and Sunday
-        const friday = new Date(today);
-        friday.setDate(friday.getDate() - 3); // Friday (3 days before Monday)
-        dates.push(friday);
-        
-        const saturday = new Date(today);
-        saturday.setDate(saturday.getDate() - 2); // Saturday (2 days before Monday)
-        dates.push(saturday);
-        
-        const sunday = new Date(today);
-        sunday.setDate(sunday.getDate() - 1); // Sunday (1 day before Monday)
-        dates.push(sunday);
-    } else {
-        // Otherwise, just the previous business day
-        dates.push(getPreviousBusinessDay(holidays));
+// Extract a date key (YYYY-MM-DD) from various date string formats without tz shifting
+const toDateKey = (dateString) => {
+    if (!dateString) return null;
+    if (typeof dateString === 'string') {
+        if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            return dateString; // already a date key
+        }
+        const tIndex = dateString.indexOf('T');
+        if (tIndex > 0) {
+            return dateString.substring(0, tIndex);
+        }
     }
-    
-    return dates;
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return null;
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 };
 
-// Helper function to check if a date is in the dates to include
-const isIncludedDate = (dateString, holidays = []) => {
-    if (!dateString) return false;
-    
-    // Handle both YYYY-MM-DD format (from Date field) and ISO string format (from TimeStamp)
-    let worklogDate;
-    if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        // YYYY-MM-DD format - parse directly
-        const [year, month, day] = dateString.split('-').map(Number);
-        worklogDate = new Date(year, month - 1, day);
-    } else {
-        // ISO string or other format
-        worklogDate = new Date(dateString);
-    }
-    
-    if (isNaN(worklogDate.getTime())) return false;
-    
-    const datesToInclude = getDatesToInclude(holidays);
-    
-    // Check if the worklog date matches any of the dates to include
-    return datesToInclude.some(date => 
-        worklogDate.getFullYear() === date.getFullYear() &&
-        worklogDate.getMonth() === date.getMonth() &&
-        worklogDate.getDate() === date.getDate()
-    );
+// Check if a date string matches the target date key
+const isIncludedDate = (dateString, targetDateKey) => {
+    const key = toDateKey(dateString);
+    if (!key || !targetDateKey) return false;
+    return key === targetDateKey;
 };
 
 export const TotalRemainingTimePerDev = () => {
@@ -98,6 +68,13 @@ export const TotalRemainingTimePerDev = () => {
         developerAccountId: null,
         developerName: null,
     });
+
+    // Target date key (previous business day)
+    const targetDateKey = useMemo(() => getPreviousBusinessDayKey(holidays), [holidays]);
+
+    useEffect(() => {
+        console.debug('[TRT] Target previous business day key:', targetDateKey, 'holidays:', holidays);
+    }, [targetDateKey, holidays]);
 
     // Aggregate remaining time per developer across all epics
     const devTotals = useMemo(() => {
@@ -143,10 +120,12 @@ export const TotalRemainingTimePerDev = () => {
 
         // Create a map by AccountID for faster lookup
         const devMapByAccountId = new Map();
+        const devMapByName = new Map();
         devMap.forEach((dev, fullName) => {
             if (dev.AccountID) {
                 devMapByAccountId.set(dev.AccountID, dev);
             }
+            devMapByName.set(normalizeName(fullName), dev);
         });
 
         // Now, calculate yesterday's time spent and overflow from worklogs and overflowTime
@@ -154,9 +133,9 @@ export const TotalRemainingTimePerDev = () => {
             issues.forEach((issue) => {
                 // Calculate previous business day's time spent from worklogs
                 if (issue.fullWorklogs && Array.isArray(issue.fullWorklogs)) {
-                    // Filter worklogs from included dates (Friday, Saturday, Sunday if Monday, otherwise previous business day)
+                    // Filter worklogs from the previous business day only
                     const previousBusinessDayWorklogs = issue.fullWorklogs.filter(worklog => 
-                        isIncludedDate(worklog.created, holidays) || isIncludedDate(worklog.started, holidays)
+                        isIncludedDate(worklog.created, targetDateKey) || isIncludedDate(worklog.started, targetDateKey)
                     );
 
                     // Aggregate by accountID
@@ -177,7 +156,14 @@ export const TotalRemainingTimePerDev = () => {
                 // Calculate previous business day's overflow time
                 if (issue.overflowTime && Array.isArray(issue.overflowTime)) {
                     issue.overflowTime.forEach(overflowItem => {
-                        if (!overflowItem.Developer || !overflowItem.Developer.AccountID) return;
+                        if (!overflowItem.Developer) {
+                            const ticketId = issue.ticketNumber || issue.key || issue.id;
+                            console.debug(`[TRT] Skipping overflow entry missing Developer (ticket ${ticketId || 'unknown'})`, {
+                                overflowItem,
+                                ticket: ticketId
+                            });
+                            return;
+                        }
 
                         // Check if overflow Date or TimeStamp is from included dates
                         let overflowDateString = null;
@@ -192,13 +178,35 @@ export const TotalRemainingTimePerDev = () => {
                             }
                         }
 
-                        if (overflowDateString && isIncludedDate(overflowDateString, holidays)) {
-                            // Find developer by accountID
-                            const devEntry = devMapByAccountId.get(overflowItem.Developer.AccountID);
+                        if (overflowDateString && isIncludedDate(overflowDateString, targetDateKey)) {
+                            // Find developer by accountID, fallback to FullName
+                            const devEntry =
+                                (overflowItem.Developer.AccountID && devMapByAccountId.get(overflowItem.Developer.AccountID)) ||
+                                devMapByName.get(normalizeName(overflowItem.Developer.FullName || overflowItem.Developer.ShortName));
 
                             if (devEntry && overflowItem.TimeSpent) {
                                 devEntry.YesterdayOverflowTime += overflowItem.TimeSpent || 0;
+                            } else {
+                                const ticketId = issue.ticketNumber || issue.key || issue.id;
+                                console.debug(`[TRT] Overflow entry not counted (ticket ${ticketId || 'unknown'})`, {
+                                    overflowDateString,
+                                    targetDateKey,
+                                    devEntryExists: !!devEntry,
+                                    hasTimeSpent: !!overflowItem.TimeSpent,
+                                    accountId: overflowItem.Developer.AccountID,
+                                    name: overflowItem.Developer.FullName || overflowItem.Developer.ShortName,
+                                    ticket: ticketId
+                                });
                             }
+                        } else {
+                            const ticketId = issue.ticketNumber || issue.key || issue.id;
+                            console.debug(`[TRT] Overflow entry outside target date (ticket ${ticketId || 'unknown'})`, {
+                                overflowDateString,
+                                targetDateKey,
+                                accountId: overflowItem.Developer.AccountID,
+                                name: overflowItem.Developer.FullName || overflowItem.Developer.ShortName,
+                                ticket: ticketId
+                            });
                         }
                     });
                 }
@@ -229,12 +237,12 @@ export const TotalRemainingTimePerDev = () => {
             if (modalState.type === 'timeSpent') {
                 // Get worklogs for this developer from included dates
                 if (issue.fullWorklogs && Array.isArray(issue.fullWorklogs)) {
-                    const relevantWorklogs = issue.fullWorklogs.filter(worklog => {
-                        const accountId = worklog.accountId || worklog.accountID;
-                        if (accountId !== modalState.developerAccountId) return false;
-                        
-                        return isIncludedDate(worklog.created, holidays) || isIncludedDate(worklog.started, holidays);
-                    });
+                        const relevantWorklogs = issue.fullWorklogs.filter(worklog => {
+                            const accountId = worklog.accountId || worklog.accountID;
+                            if (accountId !== modalState.developerAccountId) return false;
+
+                            return isIncludedDate(worklog.created, targetDateKey) || isIncludedDate(worklog.started, targetDateKey);
+                        });
 
                     if (relevantWorklogs.length > 0) {
                         const totalSeconds = relevantWorklogs.reduce((sum, wl) => sum + (wl.timeSpentSeconds || 0), 0);
@@ -250,9 +258,16 @@ export const TotalRemainingTimePerDev = () => {
                 // Get overflow entries for this developer from included dates
                 if (issue.overflowTime && Array.isArray(issue.overflowTime)) {
                     const relevantOverflow = issue.overflowTime.filter(overflowItem => {
-                        if (!overflowItem.Developer || overflowItem.Developer.AccountID !== modalState.developerAccountId) {
-                            return false;
-                        }
+                        if (!overflowItem.Developer) return false;
+
+                        const matchesAccount =
+                            overflowItem.Developer.AccountID &&
+                            overflowItem.Developer.AccountID === modalState.developerAccountId;
+
+                        const matchesName = normalizeName(overflowItem.Developer.FullName || overflowItem.Developer.ShortName) ===
+                            normalizeName(modalState.developerName);
+
+                        if (!(matchesAccount || matchesName)) return false;
                         
                         // Check Date field first (new format), then TimeStamp (backward compatibility)
                         let overflowDateString = null;
@@ -265,7 +280,7 @@ export const TotalRemainingTimePerDev = () => {
                             }
                         }
                         
-                        return overflowDateString && isIncludedDate(overflowDateString, holidays);
+                        return overflowDateString && isIncludedDate(overflowDateString, targetDateKey);
                     });
 
                     if (relevantOverflow.length > 0) {
@@ -390,4 +405,3 @@ export const TotalRemainingTimePerDev = () => {
         </Box>
     );
 };
-
