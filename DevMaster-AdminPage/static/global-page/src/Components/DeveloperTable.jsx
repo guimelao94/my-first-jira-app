@@ -17,7 +17,6 @@ export const DeveloperTable = memo(function DeveloperTable() {
     
     // Optimized selectors - only subscribe to needed values
     const developers = useSelector((state) => state.epics.Developers);
-    const saveDevCounter = useSelector((state) => state.epics.SaveDevCounter);
     const data = useSelector((state) => state.epics.data);
     const selected = useSelector((state) => state.epics.Selected);
 
@@ -49,6 +48,14 @@ export const DeveloperTable = memo(function DeveloperTable() {
             return dev;
         });
 
+        // Persist directly here (like TimeOff/Holiday flows) so the saved list
+        // is written before setDevHours triggers a refresh that resets state.Developers.
+        await invoke('Storage.SaveData', {
+            key: 'DevelopersList',
+            value: localList,
+            useUserPrefix: false // Keep developers list global/shared
+        });
+
         await dispatch(setDevHours(localList));
         setUnsaved(false);
     }, [devList, data, dispatch]);
@@ -57,17 +64,6 @@ export const DeveloperTable = memo(function DeveloperTable() {
         paddingBlock: 'space.100',
         paddingInline: 'space.075'
     });
-
-    useEffect(() => {
-        if (saveDevCounter > 0 && developers) {
-            // Developers list is kept global/shared - not user-specific
-            invoke('Storage.SaveData', { 
-                key: 'DevelopersList', 
-                value: developers,
-                useUserPrefix: false // Keep shared
-            });
-        }
-    }, [saveDevCounter, developers]);
 
     useEffect(() => {
         if (developers) {
