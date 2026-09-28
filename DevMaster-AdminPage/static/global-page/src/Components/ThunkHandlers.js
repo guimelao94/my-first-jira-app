@@ -326,20 +326,28 @@ export const RefreshDevelopersList = async (devs, currentUserAccountId) => {
     key: 'DevelopersList',
     useUserPrefix: false // Keep developers list global/shared
   });
-  
-  if (!returnedData || Object.keys(returnedData).length === 0) {
+
+  const storedList = Array.isArray(returnedData) ? returnedData : [];
+
+  if (storedList.length === 0) {
     return devsList;
   }
 
-  // Merge existing and new developers
-  let mergedDevs;
-  if (devsList.length !== returnedData.length) {
-    const existingDevNames = new Set(returnedData.map(d => d.FullName));
-    const newDevs = devsList.filter(x => !existingDevNames.has(x.FullName));
-    mergedDevs = [...returnedData, ...newDevs];
-  } else {
-    mergedDevs = returnedData;
+  // Robust merge by developer name. Stored entries are authoritative for saved hours and
+  // Time Off; any developer newly found on tickets is appended. This never drops Time Off,
+  // regardless of how the ticket-derived list length compares to the stored list length.
+  const byName = new Map();
+  for (const d of storedList) {
+    if (d && d.FullName) {
+      byName.set(d.FullName, { ...d, TimeOff: Array.isArray(d.TimeOff) ? d.TimeOff : [] });
+    }
   }
+  for (const d of devsList) {
+    if (d && d.FullName && !byName.has(d.FullName)) {
+      byName.set(d.FullName, { ...d, TimeOff: [] });
+    }
+  }
+  const mergedDevs = Array.from(byName.values());
 
   // Fetch missing avatars in parallel
   const devsNeedingAvatars = mergedDevs.filter(x => !x.AvatarUrl && x.AccountID);

@@ -34,28 +34,46 @@ export const TimeOffModal = ({ isOpen, closeModal,setDevList,dispatch }) => {
     });
 
     const HandleSubmit = async () => {
-        var devList = [...Developers];
-        for (let index = 0; index < devList.length; index++) {
-            
-            // console.log(devList[index].FullName);
-            // console.log(offDev);
-            // console.log(offDate);
-            if (devList[index].FullName === offDev.value) {
-                if (!devList[index].TimeOff) {
-                    devList[index] = {...devList[index],TimeOff:[offDate.substring(0, 10)]};
-                }
-                else{
-                    devList[index] = {...devList[index],TimeOff:[...devList[index].TimeOff,offDate.substring(0, 10)]};
-                }
-            }
-
-            if (!devList[index].TimeOff) {
-                devList[index] = {...devList[index],TimeOff:[]};
-            }
-            // console.log(devList[index]);
+        // Require a developer selection before mutating anything.
+        if (!offDev || !offDev.value) {
+            closeModal();
+            return;
         }
-        await invoke('Storage.SaveData', { key: 'DevelopersList', value: devList });
-        console.log(devList);
+
+        const newDate = offDate.substring(0, 10);
+
+        // Read the latest persisted list as the source of truth. In-memory `Developers`
+        // can be empty/stale while a background refresh is running, and writing that
+        // back would silently drop existing Time Off entries.
+        const stored = await invoke('Storage.GetData', { key: 'DevelopersList', useUserPrefix: false });
+        const storedList = Array.isArray(stored) ? stored : [];
+
+        // Merge storage (authoritative) with any in-memory devs it might be missing.
+        const byName = new Map();
+        for (const d of storedList) {
+            if (d && d.FullName) {
+                byName.set(d.FullName, { ...d, TimeOff: Array.isArray(d.TimeOff) ? [...d.TimeOff] : [] });
+            }
+        }
+        if (Array.isArray(Developers)) {
+            for (const d of Developers) {
+                if (d && d.FullName && !byName.has(d.FullName)) {
+                    byName.set(d.FullName, { ...d, TimeOff: Array.isArray(d.TimeOff) ? [...d.TimeOff] : [] });
+                }
+            }
+        }
+
+        // Ensure the selected developer exists, then append the date (avoiding duplicates).
+        if (!byName.has(offDev.value)) {
+            byName.set(offDev.value, { FullName: offDev.value, TimeOff: [] });
+        }
+        const target = byName.get(offDev.value);
+        if (!target.TimeOff.includes(newDate)) {
+            target.TimeOff.push(newDate);
+        }
+
+        const devList = Array.from(byName.values());
+        await invoke('Storage.SaveData', { key: 'DevelopersList', value: devList, useUserPrefix: false });
         await dispatch(setDevHours(devList));
         setDevList(devList);
         closeModal();

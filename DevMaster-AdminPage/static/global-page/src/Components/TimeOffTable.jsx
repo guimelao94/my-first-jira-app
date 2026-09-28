@@ -31,23 +31,35 @@ export const TimeOffTable = memo(function TimeOffTable({ readOnly = false }) {
     console.log(Developers);
 
     const RemoveRecord = async (Dev,Date) =>{
-        var devs = Array.isArray(devList) ? [...devList] : [];
+        // Read the latest persisted list as the source of truth so we never write back a
+        // stale/empty in-memory list (which would drop other developers' Time Off entries).
+        const stored = await invoke('Storage.GetData', { key: 'DevelopersList', useUserPrefix: false });
+        const storedList = Array.isArray(stored) ? stored : [];
 
-        for (let index = 0; index < devs.length; index++) {
-            
-            if (devs[index].FullName === Dev) {
-                devs[index] = {
-                    ...devs.find(x=>x.FullName === Dev),
-                    TimeOff: devs.find(x=>x.FullName === Dev).TimeOff.filter(y=>y !== Date)
-                };
+        const byName = new Map();
+        for (const d of storedList) {
+            if (d && d.FullName) {
+                byName.set(d.FullName, { ...d, TimeOff: Array.isArray(d.TimeOff) ? [...d.TimeOff] : [] });
+            }
+        }
+        if (Array.isArray(devList)) {
+            for (const d of devList) {
+                if (d && d.FullName && !byName.has(d.FullName)) {
+                    byName.set(d.FullName, { ...d, TimeOff: Array.isArray(d.TimeOff) ? [...d.TimeOff] : [] });
+                }
             }
         }
 
-        await invoke('Storage.SaveData', { key: 'DevelopersList', value: devs });
-        console.log(devs);
+        // Remove only the targeted date from the targeted developer.
+        const target = byName.get(Dev);
+        if (target) {
+            target.TimeOff = target.TimeOff.filter(y => y !== Date);
+        }
+
+        const devs = Array.from(byName.values());
+        await invoke('Storage.SaveData', { key: 'DevelopersList', value: devs, useUserPrefix: false });
         await dispatch(setDevHours(devs));
         setDevList(devs);
-
     }
 
     useEffect(() => {
