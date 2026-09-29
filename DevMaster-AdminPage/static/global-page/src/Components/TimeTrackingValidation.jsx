@@ -306,13 +306,27 @@ export const TimeTrackingValidation = ({ filterByCurrentUser = false }) => {
 
             const startedFormatted = formatForJira(startDate);
 
+            // Jira Cloud REST API v3 requires the worklog comment in Atlassian Document Format (ADF);
+            // a plain string is rejected with "Worklog body is not valid" / INVALID_INPUT.
+            const commentText = `Auto-added via DevMaster Time Tracking Validation to cover unlogged time while in status "${violation.status || 'Unknown'}" (${startDate.toISOString()} - ${endDate.toISOString()}).`;
+            const commentAdf = {
+                type: 'doc',
+                version: 1,
+                content: [
+                    {
+                        type: 'paragraph',
+                        content: [{ type: 'text', text: commentText }]
+                    }
+                ]
+            };
+
             const response = await requestJira(`/rest/api/3/issue/${ticketKey}/worklog`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    comment: `Auto-added via DevMaster Time Tracking Validation to cover unlogged time while in status "${violation.status || 'Unknown'}" (${startDate.toISOString()} - ${endDate.toISOString()}).`,
+                    comment: commentAdf,
                     started: startedFormatted,
                     timeSpentSeconds
                 })
