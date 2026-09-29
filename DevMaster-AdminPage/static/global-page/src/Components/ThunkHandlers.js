@@ -4,6 +4,7 @@ import { completeRefresh, markEpicLoadFailed, reOrderEpics, setDevelopers, setEp
 import { groupByDevs } from "../Utils/GroupingTools";
 import { invoke, requestJira } from "@forge/bridge";
 import { createTransientError, delay, retryBridgeOperation } from "../Utils/BridgeRetry";
+import { extractPeerReviewSeconds } from "../Utils/PeerReviewTools";
 
 const ISSUE_PROCESS_CONCURRENCY = 2;
 
@@ -286,6 +287,18 @@ const FillIssueData = async ({ item, index }) => {
   
   const overflowCalculated = Math.max(0, (item.fields?.timespent || 0) - (item.fields?.timeoriginalestimate || 0));
 
+  // Peer review: estimate is parsed (best-effort) from the Development Plan ADF field,
+  // and the reviewer comes from the "Peer Review" single-user field (customfield_11161).
+  const peerReviewEstimate = extractPeerReviewSeconds(item.fields?.customfield_11141);
+  const peerReviewerField = item.fields?.customfield_11161;
+  const peerReviewer = peerReviewerField
+    ? {
+        FullName: peerReviewerField.displayName,
+        AccountID: peerReviewerField.accountId,
+        AvatarUrl: peerReviewerField.avatarUrls?.['16x16']
+      }
+    : null;
+
   return {
     idx: index,
     EpicKey: item.fields.parent?.key,
@@ -306,7 +319,9 @@ const FillIssueData = async ({ item, index }) => {
     overflowTime: overflowEntries,
     worklogs: workLogs,
     fullWorklogs: fullWorklogs, // Store full worklog data for date filtering
-    overflowCalculated
+    overflowCalculated,
+    peerReviewEstimate, // seconds, parsed from Development Plan (best-effort)
+    peerReviewer // { FullName, AccountID, AvatarUrl } | null, from customfield_11161
   };
 }
 

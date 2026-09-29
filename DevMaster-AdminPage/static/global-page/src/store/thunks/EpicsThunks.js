@@ -173,7 +173,9 @@ export const ProcessEpic = createAsyncThunk('epics/Process',async (epicKey)=>{
                     'assignee',
                     'status',
                     'timeoriginalestimate',
-                    'timespent'
+                    'timespent',
+                    'customfield_11141', // Development Plan (ADF) - holds the peer-review estimate as text
+                    'customfield_11161'  // Peer Review - assignee (single user picker)
                 ]
             });
 
