@@ -171,8 +171,8 @@ export const PeerReviewSummary = memo(function PeerReviewSummary() {
             {expanded && (
             <>
             <p style={{ margin: '4px 0 0 0', color: '#6B778C' }}>
-                Peer-review time estimates (parsed from each ticket's Development Plan), grouped by the
-                assigned Peer Review reviewer. Estimates are best-effort and may miss non-standard formats.
+                Peer-review time estimates (from each ticket's Peer Review Estimate field), grouped by the
+                assigned Peer Review reviewer.
             </p>
 
             {!loaded ? (

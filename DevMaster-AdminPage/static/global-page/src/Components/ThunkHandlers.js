@@ -4,7 +4,7 @@ import { completeRefresh, markEpicLoadFailed, reOrderEpics, setDevelopers, setEp
 import { groupByDevs } from "../Utils/GroupingTools";
 import { invoke, requestJira } from "@forge/bridge";
 import { createTransientError, delay, retryBridgeOperation } from "../Utils/BridgeRetry";
-import { extractPeerReviewSeconds } from "../Utils/PeerReviewTools";
+import { getAppFieldIds } from "../Utils/CustomFields";
 
 const ISSUE_PROCESS_CONCURRENCY = 2;
 
@@ -287,9 +287,17 @@ const FillIssueData = async ({ item, index }) => {
   
   const overflowCalculated = Math.max(0, (item.fields?.timespent || 0) - (item.fields?.timeoriginalestimate || 0));
 
-  // Peer review: estimate is parsed (best-effort) from the Development Plan ADF field,
-  // and the reviewer comes from the "Peer Review" single-user field (customfield_11161).
-  const peerReviewEstimate = extractPeerReviewSeconds(item.fields?.customfield_11141);
+  // Peer review: estimate comes from the app-defined "Peer Review Estimate" number field
+  // (value is in hours), and the reviewer comes from the "Peer Review" single-user field
+  // (customfield_11161).
+  const appFields = await getAppFieldIds();
+  const peerReviewEstimateHours = appFields.peerReviewEstimate
+    ? item.fields?.[appFields.peerReviewEstimate]
+    : null;
+  const peerReviewEstimate =
+    peerReviewEstimateHours != null && !Number.isNaN(Number(peerReviewEstimateHours))
+      ? Math.round(Number(peerReviewEstimateHours) * 3600)
+      : 0;
   const peerReviewerField = item.fields?.customfield_11161;
   const peerReviewer = peerReviewerField
     ? {

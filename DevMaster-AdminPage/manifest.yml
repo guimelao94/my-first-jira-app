@@ -16,6 +16,15 @@ modules:
         expression: '["0", "25", "50", "75", 100"]'
       readOnly: false
       render: native
+    - key: peerReviewEstimate
+      name: Peer Review Estimate
+      description: Estimated peer review effort in hours
+      type: number
+      validation:
+        expression: value == null || value >= 0
+        errorMessage: The value must be a number of hours (0 or greater).
+      readOnly: false
+      render: native
   jira:globalPage:
     - key: devmaster-global
       resource: global
@@ -42,7 +51,7 @@ resources:
     path: src/sidebar-ui-kit/index.jsx
 app:
   runtime:
-    name: nodejs20.x
+    name: nodejs22.x
   id: ari:cloud:ecosystem::app/febc03a7-f422-40f0-8c4c-07a42c5856ff
   storage:
     entities:

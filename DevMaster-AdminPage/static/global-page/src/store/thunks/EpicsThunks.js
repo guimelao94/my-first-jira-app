@@ -1,6 +1,7 @@
 import { invoke, requestJira } from "@forge/bridge";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { createTransientError, delay, retryBridgeOperation } from "../../Utils/BridgeRetry";
+import { getAppFieldIds } from "../../Utils/CustomFields";
 
 // Helper to fetch all pages using nextPageToken
 const requestJiraWithRetry = async (url, options = undefined, description = 'requestJira call') => {
@@ -165,18 +166,26 @@ export const ProcessEpic = createAsyncThunk('epics/Process',async (epicKey)=>{
 
         if (data.fields?.issuetype?.name === "Epic") {
             const jql = `parent = ${epicKey} ORDER BY updated DESC`;
+
+            // Resolve the app-defined "Peer Review Estimate" field id (per-site generated id).
+            const appFields = await getAppFieldIds();
+
+            const issueFields = [
+                'parent',
+                'assignee',
+                'status',
+                'timeoriginalestimate',
+                'timespent',
+                'customfield_11161' // Peer Review - assignee (single user picker)
+            ];
+            if (appFields.peerReviewEstimate) {
+                issueFields.push(appFields.peerReviewEstimate); // Peer Review Estimate (app custom field, hours)
+            }
+
             const returnedData = await searchAllIssues({
                 jql,
                 maxResults: 1000,
-                fields: [
-                    'parent',
-                    'assignee',
-                    'status',
-                    'timeoriginalestimate',
-                    'timespent',
-                    'customfield_11141', // Development Plan (ADF) - holds the peer-review estimate as text
-                    'customfield_11161'  // Peer Review - assignee (single user picker)
-                ]
+                fields: issueFields
             });
 
             return {
