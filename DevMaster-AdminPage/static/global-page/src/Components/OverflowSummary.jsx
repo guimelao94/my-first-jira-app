@@ -48,10 +48,13 @@ const openTicket = (ticketNumber) => {
     modal.open();
 };
 
-export const OverflowSummary = memo(function OverflowSummary() {
+const normalizeName = (name) => (name || '').trim().toLowerCase();
+
+export const OverflowSummary = memo(function OverflowSummary({ filterByCurrentUser = false }) {
     const data = useSelector((state) => state.epics.data);
     const loaded = useSelector((state) => state.epics.loaded);
     const developers = useSelector((state) => state.epics.Developers);
+    const currentUser = useSelector((state) => state.epics.currentUser);
 
     // Map developer FullName -> avatar url for nicer display.
     const avatarByDev = useMemo(() => {
@@ -88,6 +91,18 @@ export const OverflowSummary = memo(function OverflowSummary() {
                     'Unassigned';
                 const avatarUrl = avatarByDev.get(devName) || issue?.assignee?.AvatarUrl;
 
+                // When scoped to a developer, only include tickets attributed to the current user.
+                if (filterByCurrentUser) {
+                    const myAccountId = currentUser?.accountId;
+                    const myName = normalizeName(currentUser?.displayName);
+                    const issueAccountId = issue?.dev?.AccountID;
+                    const issueName = normalizeName(issue?.dev?.FullName || issue?.assignee?.FullName);
+                    const isMine =
+                        (myAccountId && issueAccountId && issueAccountId === myAccountId) ||
+                        (myName && issueName && issueName === myName);
+                    if (!isMine) continue;
+                }
+
                 const list = devMap.get(devName) || [];
                 list.push({
                     ticketNumber: issue.ticketNumber,
@@ -122,7 +137,7 @@ export const OverflowSummary = memo(function OverflowSummary() {
 
         // Epics with the largest total deficit (most negative) first.
         return groups.sort((a, b) => a.totalDeficitSeconds - b.totalDeficitSeconds);
-    }, [data, avatarByDev]);
+    }, [data, avatarByDev, filterByCurrentUser, currentUser]);
 
     const totalTickets = useMemo(
         () => epicGroups.reduce((sum, e) => sum + e.ticketCount, 0),
@@ -132,7 +147,9 @@ export const OverflowSummary = memo(function OverflowSummary() {
     return (
         <div style={{ marginTop: '24px', width: '100%', maxWidth: '100%' }}>
             <Box xcss={xcss({ display: 'flex', alignItems: 'center', gap: 'space.150' })}>
-                <h2 style={{ fontWeight: 'bold', margin: 0 }}>Missing Overflow Review</h2>
+                <h2 style={{ fontWeight: 'bold', margin: 0 }}>
+                    {filterByCurrentUser ? 'My Missing Overflow' : 'Missing Overflow Review'}
+                </h2>
                 {loaded && totalTickets > 0 && (
                     <Lozenge appearance="removed" isBold>
                         {totalTickets} ticket{totalTickets !== 1 ? 's' : ''}
@@ -140,8 +157,9 @@ export const OverflowSummary = memo(function OverflowSummary() {
                 )}
             </Box>
             <p style={{ margin: '4px 0 0 0', color: '#6B778C' }}>
-                Tickets with more than 0.9h of negative remaining time, grouped by epic and developer.
-                A negative remaining time usually means an overflow entry was forgotten.
+                {filterByCurrentUser
+                    ? 'Your tickets with more than 0.9h of negative remaining time. A negative remaining time usually means an overflow entry was forgotten.'
+                    : 'Tickets with more than 0.9h of negative remaining time, grouped by epic and developer. A negative remaining time usually means an overflow entry was forgotten.'}
             </p>
 
             {!loaded ? (

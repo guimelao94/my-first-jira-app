@@ -273,6 +273,11 @@ const RoleBasedView = () => {
                     <Box xcss={xcss({ marginTop: 'space.400' })}>
                         <TimeTrackingValidation filterByCurrentUser={true} />
                     </Box>
+
+                    {/* Missing Overflow Review - scoped to the current developer */}
+                    <Box xcss={xcss({ marginTop: 'space.400' })}>
+                        <OverflowSummary filterByCurrentUser={true} />
+                    </Box>
                     
                     <Box xcss={xcss({ marginTop: 'space.400' })}>
                         <h2 style={{ fontWeight: 'bold', margin: 0 }}>My Epics</h2>
