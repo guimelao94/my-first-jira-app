@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Box, Inline, Stack, xcss } from '@atlaskit/primitives';
 import Lozenge from '@atlaskit/lozenge';
@@ -59,6 +59,9 @@ const TicketLink = ({ ticketNumber }) => (
 export const PeerReviewSummary = memo(function PeerReviewSummary() {
     const data = useSelector((state) => state.epics.data);
     const loaded = useSelector((state) => state.epics.loaded);
+
+    // Collapsed by default; expand on demand.
+    const [expanded, setExpanded] = useState(false);
 
     // Reviewer load (grouped by reviewer) + tickets missing a reviewer.
     const { reviewerGroups, missingByEpic, totalReviewSeconds } = useMemo(() => {
@@ -140,7 +143,18 @@ export const PeerReviewSummary = memo(function PeerReviewSummary() {
 
     return (
         <div style={{ marginTop: '24px', width: '100%', maxWidth: '100%' }}>
-            <Box xcss={xcss({ display: 'flex', alignItems: 'center', gap: 'space.150' })}>
+            <Box
+                role="button"
+                tabIndex={0}
+                onClick={() => setExpanded((v) => !v)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') setExpanded((v) => !v);
+                }}
+                xcss={xcss({ display: 'flex', alignItems: 'center', gap: 'space.150', cursor: 'pointer' })}
+            >
+                <span style={{ color: '#6B778C', fontSize: '12px', width: '12px', display: 'inline-block' }}>
+                    {expanded ? '▾' : '▸'}
+                </span>
                 <h2 style={{ fontWeight: 'bold', margin: 0 }}>Peer Review Load</h2>
                 {loaded && totalReviewSeconds > 0 && (
                     <Lozenge appearance="inprogress" isBold>
@@ -153,6 +167,9 @@ export const PeerReviewSummary = memo(function PeerReviewSummary() {
                     </Lozenge>
                 )}
             </Box>
+
+            {expanded && (
+            <>
             <p style={{ margin: '4px 0 0 0', color: '#6B778C' }}>
                 Peer-review time estimates (parsed from each ticket's Development Plan), grouped by the
                 assigned Peer Review reviewer. Estimates are best-effort and may miss non-standard formats.
@@ -234,6 +251,8 @@ export const PeerReviewSummary = memo(function PeerReviewSummary() {
                         </Box>
                     )}
                 </Box>
+            )}
+            </>
             )}
         </div>
     );

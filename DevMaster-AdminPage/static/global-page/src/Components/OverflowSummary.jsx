@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Box, Inline, Stack, xcss } from '@atlaskit/primitives';
 import Lozenge from '@atlaskit/lozenge';
@@ -55,6 +55,9 @@ export const OverflowSummary = memo(function OverflowSummary({ filterByCurrentUs
     const loaded = useSelector((state) => state.epics.loaded);
     const developers = useSelector((state) => state.epics.Developers);
     const currentUser = useSelector((state) => state.epics.currentUser);
+
+    // Collapsed by default; expand on demand.
+    const [expanded, setExpanded] = useState(false);
 
     // Map developer FullName -> avatar url for nicer display.
     const avatarByDev = useMemo(() => {
@@ -146,7 +149,18 @@ export const OverflowSummary = memo(function OverflowSummary({ filterByCurrentUs
 
     return (
         <div style={{ marginTop: '24px', width: '100%', maxWidth: '100%' }}>
-            <Box xcss={xcss({ display: 'flex', alignItems: 'center', gap: 'space.150' })}>
+            <Box
+                role="button"
+                tabIndex={0}
+                onClick={() => setExpanded((v) => !v)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') setExpanded((v) => !v);
+                }}
+                xcss={xcss({ display: 'flex', alignItems: 'center', gap: 'space.150', cursor: 'pointer' })}
+            >
+                <span style={{ color: '#6B778C', fontSize: '12px', width: '12px', display: 'inline-block' }}>
+                    {expanded ? '▾' : '▸'}
+                </span>
                 <h2 style={{ fontWeight: 'bold', margin: 0 }}>
                     {filterByCurrentUser ? 'My Missing Overflow' : 'Missing Overflow Review'}
                 </h2>
@@ -156,6 +170,9 @@ export const OverflowSummary = memo(function OverflowSummary({ filterByCurrentUs
                     </Lozenge>
                 )}
             </Box>
+
+            {expanded && (
+            <>
             <p style={{ margin: '4px 0 0 0', color: '#6B778C' }}>
                 {filterByCurrentUser
                     ? 'Your tickets with more than 0.9h of negative remaining time. A negative remaining time usually means an overflow entry was forgotten.'
@@ -241,6 +258,8 @@ export const OverflowSummary = memo(function OverflowSummary({ filterByCurrentUs
                         </Box>
                     ))}
                 </Box>
+            )}
+            </>
             )}
         </div>
     );
