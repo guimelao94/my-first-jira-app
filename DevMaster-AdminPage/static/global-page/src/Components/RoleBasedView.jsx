@@ -7,6 +7,7 @@ import { EpicList } from './EpicList';
 import { BootstrapAdmin } from './BootstrapAdmin';
 import { TotalRemainingTimePerDev } from './TotalRemainingTimePerDev';
 import { TimeTrackingValidation } from './TimeTrackingValidation';
+import { OverflowSummary } from './OverflowSummary';
 import { xcss } from '@atlaskit/primitives';
 import Lozenge from '@atlaskit/lozenge';
 import Spinner from '@atlaskit/spinner';
@@ -150,6 +151,8 @@ const RoleBasedView = () => {
                             <TimeTrackingValidation />
                         </Box>
                     </Grid>
+
+                    <OverflowSummary />
 
                     <div style={{ marginTop: '24px', width: '100%', maxWidth: '100%' }}>
                         <h2 style={{ fontWeight: 'bold', margin: 0 }}>All Epics</h2>
