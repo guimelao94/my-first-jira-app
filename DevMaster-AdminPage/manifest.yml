@@ -41,9 +41,19 @@ modules:
       title: DevMaster - Issue Tool
       description: Issue tools.
       label: Add Workflow ...
+  trigger:
+    - key: auto-worklog-exit
+      function: auto-worklog-fn
+      events:
+        - avi:jira:updated:issue
+      filter:
+        ignoreSelf: true
+        expression: event.associatedStatuses != null
   function:
     - key: resolver
       handler: index.handler
+    - key: auto-worklog-fn
+      handler: triggers/autoWorklogOnStatusExit.run
 resources:
   - key: global
     path: static/global-page/build
@@ -63,10 +73,13 @@ app:
             type: string
 permissions:
   scopes:
-    - read:jira-work
-    - write:jira-work
-    - storage:app
-    - read:jira-user
+    read:jira-work:
+      allowImpersonation: true
+    write:jira-work:
+      allowImpersonation: true
+    storage:app: {}
+    read:jira-user:
+      allowImpersonation: true
   content:
     styles:
       - 'unsafe-inline'
