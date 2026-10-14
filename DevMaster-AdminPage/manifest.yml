@@ -49,11 +49,20 @@ modules:
       filter:
         ignoreSelf: true
         expression: event.associatedStatuses != null
+    - key: unmark-completed
+      function: unmark-completed-fn
+      events:
+        - avi:jira:updated:issue
+      filter:
+        ignoreSelf: true
+        expression: event.associatedStatuses != null
   function:
     - key: resolver
       handler: index.handler
     - key: auto-worklog-fn
       handler: triggers/autoWorklogOnStatusExit.run
+    - key: unmark-completed-fn
+      handler: triggers/unmarkCompletedOnBackToDev.run
 resources:
   - key: global
     path: static/global-page/build
