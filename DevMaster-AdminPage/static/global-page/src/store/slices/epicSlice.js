@@ -169,11 +169,12 @@ const epicsSlice = createSlice({
           const payloadIssues = action.payload;
           console.log(payloadIssues);
           epic.Issues = payloadIssues;
-          epic.TimeRemaining = convertToHours(payloadIssues.reduce((total, item) => total + (item['remainingTime'] || 0), 0));
+          epic.Developers = groupByDevs(payloadIssues,'dev');
+          // Remaining work excludes completed tickets, matching the per-developer headers.
+          epic.TimeRemaining = convertToHours(epic.Developers.reduce((total, item) => total + (item['RemainingWork'] || 0), 0));
           epic.TimeSpent = convertToHours(payloadIssues.reduce((total, item) => total + (item['timespent'] || 0), 0));
           epic.OriginalEstimate = convertToHours(payloadIssues.reduce((total, item) => total + (item['originalestimate'] || 0), 0));
           epic.OverflowTime = convertToHours(payloadIssues.reduce((total, item) => total + sumOverflow(item), 0));
-          epic.Developers = groupByDevs(payloadIssues,'dev');
           epic.loaded = true;
         }
         
