@@ -1,44 +1,49 @@
 import { storage } from '@forge/api';
 
-// "Back to Dev" is a transition into In Dev Queue on some workflows;
-// other sites use Back To Dev as the status name itself.
-const TARGET_STATUSES = ['back to dev', 'in dev queue'];
+const MARK_COMPLETED_STATUSES = ['ready for staging qa', 'cancel', 'canceled', 'cancelled'];
+const UNMARK_COMPLETED_STATUSES = ['in dev queue', 'back to dev'];
 
 const normalizeStatus = (value) => (value || '').trim().toLowerCase();
 
-const isBackToDevStatus = (value) => TARGET_STATUSES.includes(normalizeStatus(value));
+const completedFlagForStatus = (status) => {
+    const normalized = normalizeStatus(status);
+    if (MARK_COMPLETED_STATUSES.includes(normalized)) return true;
+    if (UNMARK_COMPLETED_STATUSES.includes(normalized)) return false;
+    return null;
+};
 
-const findBackToDevTransition = (event) => {
+const findStatusChange = (event) => {
     const items = event?.changelog?.items || [];
-    return items.find((item) => item?.field === 'status' && isBackToDevStatus(item.toString));
+    return items.find((item) => item?.field === 'status' && completedFlagForStatus(item.toString) !== null);
 };
 
 export const run = async (event) => {
     try {
         const issueKey = event?.issue?.key;
         if (!issueKey) {
-            console.warn('unmarkCompleted: missing issue key');
+            console.warn('syncCompleted: missing issue key');
             return;
         }
 
-        const statusChange = findBackToDevTransition(event);
+        const statusChange = findStatusChange(event);
         if (!statusChange) {
             return;
         }
 
+        const nextCompleted = completedFlagForStatus(statusChange.toString);
         const stored = (await storage.get(issueKey)) || {};
-        if (!stored.isCompleted) {
-            console.log(`unmarkCompleted: ${issueKey} skipped; already not completed`);
+        if (!!stored.isCompleted === nextCompleted) {
+            console.log(`syncCompleted: ${issueKey} skipped; already ${nextCompleted ? 'completed' : 'not completed'}`);
             return;
         }
 
         await storage.set(issueKey, {
             ...stored,
-            isCompleted: false
+            isCompleted: nextCompleted
         });
 
-        console.log(`unmarkCompleted: ${issueKey} unmarked after move to "${statusChange.toString}"`);
+        console.log(`syncCompleted: ${issueKey} ${nextCompleted ? 'marked' : 'unmarked'} completed after move to "${statusChange.toString}"`);
     } catch (error) {
-        console.error('unmarkCompleted: failed to unmark completed on Back To Dev', error);
+        console.error('syncCompleted: failed to sync completed on status change', error);
     }
 };
